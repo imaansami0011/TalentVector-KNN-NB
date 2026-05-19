@@ -1,0 +1,36 @@
+# Node / Frontend dependencies
+node_modules/
+dist/
+build/
+.eslintcache
+
+# Python / Backend caches and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Project-specific temp/upload directories
+uploads/
+Generated_DOCX/
+
+# Model binaries
+*.bin
+*.pt
+*.pth
+

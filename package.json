@@ -1,0 +1,27 @@
+{
+  "name": "hr--helper",
+  "version": "1.0.0",
+  "description": "This repository contains a machine learning project focused on automating the resume screening process using Python. The primary goal is to develop a model that can efficiently and accurately evaluate resumes based on predefined criteria.",
+  "main": "index.js",
+  "scripts": {
+    "backend": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "frontend": "npm run dev --prefix frontend",
+    "dev": "concurrently --kill-others \"npm run backend\" \"npm run frontend\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anukalp-mishra/Resume-Screening.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/anukalp-mishra/Resume-Screening/issues"
+  },
+  "homepage": "https://github.com/anukalp-mishra/Resume-Screening#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
