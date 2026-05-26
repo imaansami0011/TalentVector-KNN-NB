@@ -1,5 +1,5 @@
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Header
 from datetime import datetime, timezone
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -18,10 +18,12 @@ load_dotenv()
 from .auth import router as auth_router
 from .candidate import router as candidate_router
 from .recruiter import router as recruiter_router
-from .database import client, screenings_collection
+from .database import client, screenings_collection, candidate_profiles_collection, job_descriptions_collection
+from .seed import seed_candidates_if_empty
+from .seed_companies import seed_companies_hr_jobs
 
 # Import our classical modules
-from .extractor import extract_entities, clean_text
+from .extractor import extract_entities, clean_text, detect_domain
 from .ranker import rank_resumes
 from .mailer import send_interview_invitations, send_hr_report
 
@@ -79,6 +81,10 @@ async def startup_db_client():
         # Send a ping to confirm a successful connection
         await client.admin.command('ping')
         print("Pinged your deployment. You successfully connected to MongoDB!")
+        # Seed candidates
+        await seed_candidates_if_empty()
+        # Seed companies, HR users, and real jobs
+        await seed_companies_hr_jobs()
     except Exception as e:
         print(f"MongoDB connection error: {e}")
 
@@ -284,6 +290,173 @@ async def screen_resumes(
         job_domain_detected=detected_domain,
         top_candidates=top_candidates
     )
+
+# --- Phase 2 Endpoints ---
+
+class JDParseRequest(BaseModel):
+    jd_text: Optional[str] = None
+
+@app.post("/jd/parse")
+async def parse_jd(
+    request: Request,
+    jd_text: Optional[str] = Form(None),
+    jd_file: Optional[UploadFile] = File(None)
+):
+    content_type = request.headers.get("content-type", "")
+    text = ""
+    if "application/json" in content_type:
+        try:
+            body = await request.json()
+            text = body.get("jd_text", "")
+        except Exception:
+            pass
+    elif jd_file:
+        text = await extract_text_from_file(jd_file)
+    elif jd_text:
+        text = jd_text
+        
+    if not text:
+        raise HTTPException(status_code=400, detail="Provide JD text or upload a JD file")
+        
+    entities = extract_entities(text, is_jd=True)
+    
+    # Heuristic for Location Type
+    location_type = "Onsite"
+    if "remote" in text.lower():
+        location_type = "Remote"
+    elif "hybrid" in text.lower():
+        location_type = "Hybrid"
+        
+    # Domain detection
+    detected_domain = detect_domain(entities.get("Categorized_Skills", {}))
+    
+    return {
+        "title": entities.get("Designation", "New Job Role") if entities.get("Designation") != "Not Found" else "New Job Role",
+        "min_experience": int(entities.get("Years_of_Experience", 3)) or 3,
+        "location_type": location_type,
+        "core_skills": entities.get("Skills", []),
+        "company_email": entities.get("Email", "") if entities.get("Email") != "Not Found" else "",
+        "sector": detected_domain,
+        "original_text": text
+    }
+
+@app.post("/screen/bulk")
+async def screen_bulk_private(
+    jd_id: str = Form(...),
+    files: List[UploadFile] = File(...),
+    x_user_id: str = Header(...)
+):
+    from bson import ObjectId
+    try:
+        obj_id = ObjectId(jd_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+        
+    jd = await job_descriptions_collection.find_one({"_id": obj_id, "owner_id": x_user_id})
+    if not jd:
+        raise HTTPException(status_code=404, detail="Job description not found")
+        
+    target_skills = jd.get("core_skills", [])
+    required_exp = jd.get("min_experience", 3)
+    
+    processed_candidates = []
+    upload_dir = os.path.join("data", "private_uploads", x_user_id, jd_id)
+    
+    for file in files:
+        text = await extract_text_from_file(file)
+        if not text:
+            continue
+            
+        saved_path = save_upload_file(file, upload_dir)
+        entities = extract_entities(text)
+        
+        # Save private candidate profile to DB
+        candidate_doc = {
+            "name": entities.get("Name", "Unknown Name") if entities.get("Name") != "Not Found" else "Unknown Name",
+            "email": entities.get("Email", "Not Found") if entities.get("Email") != "Not Found" else f"private.{uuid.uuid4().hex[:8]}@example.com",
+            "phone": entities.get("Phone", "Not Found") if entities.get("Phone") != "Not Found" else "",
+            "sector": detect_domain(entities.get("Categorized_Skills", {})),
+            "total_experience": float(entities.get("Years_of_Experience", 0)),
+            "skills": entities.get("Skills", []),
+            "original_cv_path": saved_path,
+            "visibility": "private",
+            "owner_id": x_user_id,
+            "status": "new",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        # Check if already exists to prevent duplicate insertion
+        existing = await candidate_profiles_collection.find_one({"email": candidate_doc["email"], "owner_id": x_user_id})
+        if existing:
+            candidate_id = str(existing["_id"])
+            await candidate_profiles_collection.update_one({"_id": existing["_id"]}, {"$set": candidate_doc})
+        else:
+            res = await candidate_profiles_collection.insert_one(candidate_doc)
+            candidate_id = str(res.inserted_id)
+            
+        # Calculate score (Cosine similarity 70% / Exp 30%)
+        from .ranker import manual_ranker
+        skill_score = manual_ranker(target_skills, entities["Skills"]) * 100
+        actual_exp = entities.get("Years_of_Experience", 0)
+        exp_score = 100 if actual_exp >= required_exp else (actual_exp / required_exp) * 100
+        final_weighted_score = (skill_score * 0.7) + (exp_score * 0.3)
+        
+        processed_candidates.append({
+            "id": candidate_id,
+            "name": candidate_doc["name"],
+            "email": candidate_doc["email"],
+            "phone": candidate_doc["phone"],
+            "skills_extracted": candidate_doc["skills"],
+            "experience_years": actual_exp,
+            "match_score_percentage": round(final_weighted_score, 2),
+            "cv_file_path": saved_path.replace("\\", "/")
+        })
+        
+    processed_candidates.sort(key=lambda x: x['match_score_percentage'], reverse=True)
+    
+    # Save screening session to DB
+    screening_doc = {
+        "recruiter_id": x_user_id,
+        "owner_id": x_user_id,
+        "jd_id": jd_id,
+        "mode": "private",
+        "candidates": processed_candidates,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await screenings_collection.insert_one(screening_doc)
+    
+    return {"status": "success", "candidates": processed_candidates}
+
+@app.get("/screen/global")
+async def screen_global_api(
+    jd_id: str,
+    x_user_id: str = Header(...)
+):
+    from .recruiter import search_global_candidates
+    return await search_global_candidates(jd_id=jd_id, x_user_id=x_user_id)
+
+@app.post("/predict")
+async def predict_resume_category(
+    cv_text: Optional[str] = Form(None),
+    cv_file: Optional[UploadFile] = File(None)
+):
+    final_text = ""
+    if cv_file:
+        final_text = await extract_text_from_file(cv_file)
+    elif cv_text:
+        final_text = cv_text
+        
+    if not final_text:
+        raise HTTPException(status_code=400, detail="Provide resume text or upload a file")
+        
+    from .models.classifier import predict_sector_nb
+    nb_res = predict_sector_nb(final_text)
+    
+    return {
+        "status": "success",
+        "raw_category": nb_res["raw_category"],
+        "mapped_sector": nb_res["mapped_sector"]
+    }
 
 if __name__ == "__main__":
     import uvicorn

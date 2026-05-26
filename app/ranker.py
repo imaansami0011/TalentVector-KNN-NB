@@ -68,6 +68,7 @@ def rank_resumes(job_description, resumes, target_skills=None):
             "designation": res.get("designation"),
             "entities": res.get("entities"),
             "years_of_experience": res.get("years_of_experience"),
+            "cv_file_path": res.get("cv_file_path"),
             "score": round(skill_score, 4) # This will be weighted in main.py
         }
         results.append(res_data)

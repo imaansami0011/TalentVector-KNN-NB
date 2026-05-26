@@ -1,98 +1,111 @@
 @import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Hanken+Grotesk:wght@600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Grotesk:wght@300..700&display=swap');
 
 @theme {
-  /* Colors */
-  --color-primary: #004ac6;
-  --color-primary-container: #2563eb;
-  --color-primary-fixed: #dbe1ff;
-  --color-primary-fixed-dim: #b4c5ff;
-  --color-secondary: #515f74;
-  --color-secondary-container: #d5e3fc;
-  --color-tertiary: #4d556b;
-  --color-tertiary-container: #656d84;
-  --color-surface: #f7f9fb;
-  --color-surface-bright: #f7f9fb;
-  --color-surface-dim: #d8dadc;
-  --color-surface-container: #eceef0;
-  --color-surface-container-low: #f2f4f6;
-  --color-surface-container-high: #e6e8ea;
-  --color-surface-container-highest: #e0e3e5;
-  --color-surface-container-lowest: #ffffff;
-  --color-on-surface: #191c1e;
-  --color-on-surface-variant: #434655;
-  --color-outline: #737686;
-  --color-outline-variant: #c3c6d7;
+  /* OKLCH Theme Colors (Cloud White SaaS Direction) */
+  --color-background: oklch(0.992 0.002 250);
+  --color-foreground: oklch(0.21 0.034 264);
+  
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.21 0.034 264);
+  
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.21 0.034 264);
+  
+  --color-primary: oklch(0.62 0.19 257);
+  --color-primary-foreground: oklch(1 0 0);
+  
+  --color-secondary: oklch(0.955 0.01 250);
+  --color-secondary-foreground: oklch(0.21 0.034 264);
+  
+  --color-muted: oklch(0.955 0.01 250);
+  --color-muted-foreground: oklch(0.55 0.03 257);
+  
+  --color-accent: oklch(0.97 0.01 250);
+  --color-accent-foreground: oklch(0.21 0.034 264);
+  
+  --color-destructive: oklch(0.62 0.21 28);
+  --color-destructive-foreground: oklch(0.99 0.002 28);
+  
+  --color-success: oklch(0.67 0.19 145);
+  --color-warning: oklch(0.79 0.16 80);
+  
+  --color-border: oklch(0.92 0.008 250);
+  --color-input: oklch(0.96 0.005 250);
+  --color-ring: oklch(0.62 0.19 257);
 
-  /* Fonts */
-  --font-headline: "Hanken Grotesk", sans-serif;
-  --font-body: "Inter", sans-serif;
-
-  /* Spacing - Scaled down for more professional density */
-  --spacing-margin-mobile: 16px;
-  --spacing-margin-desktop: 32px;
-  --spacing-stack-sm: 8px;
-  --spacing-stack-md: 16px;
-  --spacing-stack-lg: 32px;
-  --spacing-base: 6px;
+  /* Typography */
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
 
   /* Border Radius */
-  --radius-xl: 0.5rem;
-  --radius-lg: 0.375rem;
+  --radius-xl: 1.0625rem;
+  --radius-lg: 0.75rem;
+  --radius-md: 0.625rem;
+  --radius-sm: 0.5rem;
 }
+
+@custom-variant dark (&:is(.dark *));
 
 @layer base {
-  html {
-    font-size: 92%; /* Scaled down base font */
+  * {
+    @apply border-border;
   }
   body {
-    @apply font-body text-on-surface bg-surface antialiased;
+    @apply font-body bg-background text-foreground antialiased selection:bg-primary/10;
+    font-feature-settings: "ss01", "cv11";
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold tracking-tight text-slate-900;
   }
 }
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+/* Glassmorphism utility */
+.glass {
+  background: color-mix(in oklab, var(--color-card) 75%, transparent);
+  backdrop-filter: blur(12px);
 }
 
+/* Background grid utility */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-border) 40%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-border) 40%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
+  height: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #c3c6d7;
+  background: var(--color-border);
   border-radius: 10px;
 }
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
 }
 
-@layer utilities {
-  .animate-fadeIn {
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-  
-  .animate-shake {
-    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-  }
-}
-
+/* Page fade-in animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes shake {
-  10%, 90% { transform: translate3d(-1px, 0, 0); }
-  20%, 80% { transform: translate3d(2px, 0, 0); }
-  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-  40%, 60% { transform: translate3d(4px, 0, 0); }
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sweep {
+  from { transform: translateX(-100%) skewX(-30deg); }
+  to { transform: translateX(100%) skewX(-30deg); }
+}
+
+.animate-sweep {
+  animation: sweep 3s ease-in-out infinite;
 }

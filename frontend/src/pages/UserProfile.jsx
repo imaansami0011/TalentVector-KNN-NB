@@ -18,6 +18,7 @@ export default function UserProfile() {
     email: '',
     phone: '',
     sector: 'Technology',
+    raw_category: '',
     total_experience: 0,
     skills: [],
     original_cv_path: ''
@@ -69,6 +70,7 @@ export default function UserProfile() {
         setProfile(prev => ({
           ...prev,
           sector: data.detected_sector || 'General',
+          raw_category: data.detected_raw_category || '',
           total_experience: data.detected_experience || prev.total_experience,
           skills: data.detected_skills || [],
           original_cv_path: data.original_cv_path
@@ -152,6 +154,13 @@ export default function UserProfile() {
         </div>
         
         <div className="flex items-center gap-4">
+          <Link 
+            to="/profile-showcase"
+            className="px-6 py-2 bg-white text-primary border border-primary/20 rounded-lg font-bold shadow-sm hover:bg-primary/5 transition-all flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">visibility</span>
+            View Showcase
+          </Link>
           <button 
             onClick={handleSave}
             disabled={isSaving}
@@ -187,6 +196,12 @@ export default function UserProfile() {
                   <span className="material-symbols-outlined text-sm">history</span>
                   <span className="text-sm font-medium">{profile.total_experience} Years Exp.</span>
                 </div>
+                {profile.raw_category && (
+                  <div className="flex items-center gap-2 text-primary font-bold mt-2 pt-2 border-t border-outline-variant/30">
+                    <span className="material-symbols-outlined text-sm text-primary animate-pulse">psychology</span>
+                    <span className="text-xs uppercase tracking-wider">ML Predicted: {profile.raw_category}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -333,27 +348,6 @@ export default function UserProfile() {
           </div>
         </div>
       </main>
-
-      {/* Fluid Bottom Navigation */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-80px)] max-w-3xl z-50 flex justify-around items-center px-8 py-2 bg-white/80 backdrop-blur-3xl border border-white/50 shadow-[0_25px_100px_-15px_rgba(0,0,0,0.2)] rounded-full transition-all duration-500 hover:bg-white/90">
-        <Link to="/browse" className="relative flex flex-col items-center justify-center text-on-surface-variant px-6 py-1.5 transition-all hover:text-primary group">
-          <span className="material-symbols-outlined transition-transform group-hover:-translate-y-0.5">home</span>
-          <span className="text-[8px] font-black uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">Home</span>
-        </Link>
-        <Link to="/browse" className="relative flex flex-col items-center justify-center text-on-surface-variant px-6 py-1.5 transition-all hover:text-primary group">
-          <span className="material-symbols-outlined transition-transform group-hover:-translate-y-0.5" style={{ fontVariationSettings: "'FILL' 0" }}>work</span>
-          <span className="text-[8px] font-black uppercase tracking-widest opacity-70">Jobs</span>
-        </Link>
-        <Link to="/user-profile" className="relative flex flex-col items-center justify-center text-primary px-10 py-1.5 transition-all group">
-          <span className="material-symbols-outlined scale-110" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Profile</span>
-          <div className="absolute -bottom-1 w-24 h-1 bg-primary rounded-full shadow-[0_2px_12px_rgba(0,74,198,0.5)]"></div>
-        </Link>
-        <button className="relative flex flex-col items-center justify-center text-on-surface-variant px-6 py-1.5 transition-all hover:text-primary group cursor-not-allowed opacity-50">
-          <span className="material-symbols-outlined transition-transform group-hover:-translate-y-0.5">settings</span>
-          <span className="text-[8px] font-black uppercase tracking-widest opacity-70">Settings</span>
-        </button>
-      </nav>
 
       {/* Premium Success Notification */}
       {showSuccess && (

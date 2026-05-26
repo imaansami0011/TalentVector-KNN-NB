@@ -11,22 +11,104 @@ export default function IdentityGateway() {
   const [step, setStep] = useState('email'); // 'email' | 'otp' | 'password' | 'login'
   const navigate = useNavigate();
 
-  const handleEmailSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
-    // Simulate checking MongoDB. For now, assume new user -> Trigger OTP
-    setStep('otp');
+    try {
+      const response = await fetch('http://localhost:8000/auth/register-init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (response.ok) {
+        setStep('otp');
+      } else {
+        const errorData = await response.json();
+        if (errorData.detail === 'User already exists') {
+          setStep('login');
+        } else {
+          alert(errorData.detail || 'Failed to initialize signup.');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to connect to authentication server. Is the backend running?');
+    }
   };
 
   const handleOtpSubmit = (e) => {
     e.preventDefault();
-    // Simulate OTP verification success
     setStep('password');
   };
 
-  const handlePasswordSubmit = (e) => {
+  const performLogin = async (loginEmail, loginPassword) => {
+    try {
+      const response = await fetch('http://localhost:8000/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.detail || 'Login failed. Please check your credentials.');
+        return;
+      }
+
+      const data = await response.json();
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('user_id', loginEmail);
+      localStorage.setItem('user_role', data.role);
+      localStorage.setItem('user_name', loginEmail.split('@')[0]);
+
+      if (data.role === 'recruiter') {
+        if (data.status === 'incomplete_profile') {
+          navigate('/recruiter-onboarding');
+        } else {
+          navigate('/hr/portal');
+        }
+      } else {
+        if (data.status === 'incomplete_profile') {
+          navigate('/onboarding');
+        } else {
+          navigate('/hr/portal');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to log in. Make sure backend is running.');
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    // Simulate password setup and auto-login
-    navigate(role === 'hr' ? '/recruiter' : '/onboarding');
+    try {
+      const response = await fetch('http://localhost:8000/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          otp,
+          password,
+          role: role === 'hr' ? 'recruiter' : 'candidate'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.detail || 'Verification failed. Please check your OTP.');
+        return;
+      }
+
+      await performLogin(email, password);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to register. Make sure backend is running.');
+    }
+  };
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    await performLogin(email, password);
   };
 
   const loginWithGoogle = useGoogleLogin({
@@ -61,10 +143,14 @@ export default function IdentityGateway() {
           if (data.status === 'incomplete_profile') {
             navigate('/recruiter-onboarding');
           } else {
-            navigate('/recruiter');
+            navigate('/hr/portal');
           }
         } else {
-          navigate('/onboarding', { state: { googleName: userInfo.name } });
+          if (data.status === 'incomplete_profile') {
+            navigate('/onboarding', { state: { googleName: userInfo.name } });
+          } else {
+            navigate('/hr/portal');
+          }
         }
       } catch (err) {
         console.error('Login Pipeline Failed:', err);
@@ -278,6 +364,47 @@ export default function IdentityGateway() {
               </div>
               <button type="submit" className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2">
                 Create Account & Continue <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+
+          {step === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-bold text-slate-900">Welcome Back</h3>
+                <p className="text-sm text-slate-500 mt-1">Enter your password to sign in</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-outline uppercase tracking-[0.2em] ml-1 opacity-70">Password</label>
+                <div className="relative group">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-transparent rounded-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative flex items-center">
+                    <KeyRound className="absolute left-4 w-4.5 h-4.5 text-outline transition-colors group-focus-within:text-primary" />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-outline-variant/40 bg-white/50 backdrop-blur-sm focus:bg-white focus:ring-[3px] focus:ring-primary/5 focus:border-primary transition-all outline-none text-sm font-bold placeholder:text-outline/50 shadow-inner"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                type="submit" 
+                className="group relative w-full py-4 bg-[#111] overflow-hidden rounded-2xl transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)] hover:scale-[1.01] active:scale-[0.98]"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                <div className="relative flex items-center justify-center gap-3">
+                  <span className="text-white font-black uppercase tracking-[0.2em] text-[10px]">Log In</span>
+                  <ArrowRight className="w-4 h-4 text-white transition-transform group-hover:translate-x-1" />
+                </div>
+              </button>
+              
+              <button type="button" onClick={() => setStep('email')} className="w-full py-3 text-slate-500 font-semibold text-sm hover:text-slate-700">
+                Back to email
               </button>
             </form>
           )}

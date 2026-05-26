@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 
 export default function JDSourcing() {
@@ -273,7 +273,7 @@ export default function JDSourcing() {
                   {searchResults.map((c, idx) => (
                     <div key={idx} className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant flex justify-between items-center shadow-sm">
                       <div className="flex flex-col gap-1">
-                        <h4 className="text-xl font-bold">{c.name}</h4>
+                        <Link to={`/candidates/${(idx % 4) + 1}`} className="text-xl font-bold text-on-surface hover:text-primary transition-colors cursor-pointer">{c.name}</Link>
                         <div className="flex gap-4 text-sm text-on-surface-variant font-medium">
                           <span>{c.experience_years} Years Exp</span>
                           <span className="text-primary font-bold">{c.match_score_percentage || (c.score * 100).toFixed(1)}% Match</span>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function RecruiterPortal() {
   const [jdText, setJdText] = useState('');
@@ -78,7 +78,7 @@ export default function RecruiterPortal() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-on-surface-variant cursor-pointer">settings</span>
+          <span className="material-symbols-outlined text-on-surface-variant cursor-pointer" onClick={() => navigate('/recruiter-profile')}>settings</span>
           <div className="relative">
             <button 
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
@@ -213,7 +213,7 @@ export default function RecruiterPortal() {
                 </div>
 
                 {results.top_candidates.map((candidate, idx) => (
-                  <div key={idx} className="bg-surface-container-lowest p-stack-md rounded-xl border border-outline-variant shadow-sm hover:border-primary/50 transition-all group flex items-center gap-6">
+                  <Link key={idx} to={`/candidates/${(idx % 4) + 1}`} className="bg-surface-container-lowest p-stack-md rounded-xl border border-outline-variant shadow-sm hover:border-primary/50 transition-all group flex items-center gap-6 no-underline text-inherit cursor-pointer">
                     <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center font-bold text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
                       #{candidate.rank}
                     </div>
@@ -242,10 +242,17 @@ export default function RecruiterPortal() {
                       </div>
                     </div>
 
-                    <button className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">
+                    <button 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert(`Downloading resume for ${candidate.name}...`);
+                      }}
+                      className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                    >
                       download
                     </button>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

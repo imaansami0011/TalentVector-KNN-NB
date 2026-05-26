@@ -80,3 +80,74 @@ def send_hr_report(top_candidates):
             print(f"HR Report sent to {manager_email}")
     except Exception as e:
         print(f"Error sending HR report: {e}")
+
+def send_candidate_invite_email(
+    candidate_email: str,
+    candidate_name: str,
+    job_title: str,
+    company_details: dict,
+    recruiter_name: str,
+    recruiter_role: str
+) -> bool:
+    """
+    Sends an automated, branded interview invitation email to the candidate's email,
+    populated with the recruiter's Company Profile details.
+    """
+    sender_email = os.getenv("SENDER_EMAIL")
+    sender_pass = os.getenv("SENDER_PASSWORD")
+    
+    company_name = company_details.get("company_name", "Our Company")
+    website = company_details.get("website", "")
+    hq = company_details.get("hq_location", "")
+    address = company_details.get("address", "")
+    
+    body = (
+        f"Dear {candidate_name},\n\n"
+        f"We are excited to invite you for an interview for the {job_title} position at {company_name}.\n\n"
+        f"Position: {job_title}\n"
+        f"Company: {company_name}\n"
+    )
+    if website:
+        body += f"Website: {website}\n"
+    if hq or address:
+        body += f"Location: {hq or address}\n"
+        
+    body += (
+        f"\nOur team was highly impressed by your qualifications and experience. "
+        f"{recruiter_name} ({recruiter_role}) from our talent acquisition team will be in touch shortly "
+        f"to coordinate the next steps.\n\n"
+        f"Best regards,\n"
+        f"{recruiter_name}\n"
+        f"{recruiter_role}\n"
+        f"{company_name}"
+    )
+    
+    # Print email content for visibility in console
+    print("\n" + "="*60)
+    print("SENDING BRANDED CANDIDATE INTERVIEW INVITATION EMAIL:")
+    print(f"To: {candidate_email}")
+    print(f"From: {sender_email or 'mock_smtp@talentvector.com'}")
+    print(f"Subject: Interview Invitation: {job_title} at {company_name}")
+    print(body)
+    print("="*60 + "\n")
+
+    if not sender_email or not sender_pass:
+        print("SMTP Credentials not configured. Invitation email simulated successfully.")
+        return True
+
+    try:
+        msg = EmailMessage()
+        msg.set_content(body)
+        msg['Subject'] = f"Interview Invitation: {job_title} at {company_name}"
+        msg['From'] = sender_email
+        msg['To'] = candidate_email
+        
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_pass)
+            server.send_message(msg)
+        print(f"Branded invitation email sent successfully to {candidate_email}")
+        return True
+    except Exception as e:
+        print(f"Error sending branded invite email: {e}")
+        return False
+

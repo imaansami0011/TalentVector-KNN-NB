@@ -184,31 +184,6 @@ export default function MarketDiscovery() {
           ))}
         </section>
       </main>
-
-      {/* Premium Sleek Bottom Navigation */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-80px)] max-w-3xl z-50 flex justify-around items-center px-8 py-2 bg-white/80 backdrop-blur-3xl border border-white/50 shadow-[0_25px_100px_-15px_rgba(0,0,0,0.2)] rounded-full transition-all duration-500 hover:bg-white/90">
-        <Link to="/browse" className="relative flex flex-col items-center justify-center text-on-surface-variant px-6 py-1.5 transition-all hover:text-primary group">
-          <span className="material-symbols-outlined transition-transform group-hover:-translate-y-0.5">home</span>
-          <span className="text-[8px] font-black uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">Home</span>
-        </Link>
-        
-        <Link to="/browse" className="relative flex flex-col items-center justify-center text-primary px-10 py-1.5 transition-all group">
-          <span className="material-symbols-outlined scale-110" style={{ fontVariationSettings: "'FILL' 1" }}>work</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Jobs</span>
-          {/* Sleek wide bar below */}
-          <div className="absolute -bottom-1 w-24 h-1 bg-primary rounded-full shadow-[0_2px_12px_rgba(0,74,198,0.5)]"></div>
-        </Link>
-        
-        <Link to="/user-profile" className="relative flex flex-col items-center justify-center text-on-surface-variant px-6 py-1.5 transition-all hover:text-primary group">
-          <span className="material-symbols-outlined transition-transform group-hover:-translate-y-0.5">person</span>
-          <span className="text-[8px] font-black uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity">Profile</span>
-        </Link>
-        
-        <button className="relative flex flex-col items-center justify-center text-on-surface-variant px-6 py-1.5 transition-all hover:text-primary group cursor-not-allowed opacity-50">
-          <span className="material-symbols-outlined transition-transform group-hover:-translate-y-0.5">settings</span>
-          <span className="text-[8px] font-black uppercase tracking-widest opacity-70">Settings</span>
-        </button>
-      </nav>
     </div>
   );
 }
