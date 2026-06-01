@@ -96,111 +96,158 @@ def send_candidate_invite_email(
     )
 
     # Branded, premium HTML version to satisfy anti-spam checks and improve readability
+    portal_url = website if website else "https://talentvector.com/portal"
     location_row = f'<div class="job-detail"><strong>Location:</strong> {location}</div>' if location else ''
-    website_row = f'<div class="job-detail"><strong>Website:</strong> <a href="{website}" style="color: #4f46e5; text-decoration: none;">{website}</a></div>' if website else ''
+    website_row = f'<div class="job-detail"><strong>Website:</strong> <a href="{website}" style="color: #4f46e5; text-decoration: none; font-weight: 600;">{website}</a></div>' if website else ''
     
     body_html = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   body {{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f8fafc;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f3f4f6;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
   }}
   .wrapper {{
-    background-color: #f8fafc;
+    background-color: #f3f4f6;
     padding: 40px 20px;
   }}
   .container {{
-    max-width: 600px;
+    max-width: 580px;
     margin: 0 auto;
     background-color: #ffffff;
-    border-radius: 16px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border-radius: 20px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
     overflow: hidden;
   }}
   .header {{
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-    padding: 32px;
+    background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+    padding: 40px 32px;
     text-align: center;
     color: #ffffff;
   }}
+  .header-badge {{
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    display: inline-block;
+    margin-bottom: 16px;
+    color: #e0e7ff;
+  }}
   .header h1 {{
     margin: 0;
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 800;
-    letter-spacing: -0.025em;
-    text-transform: uppercase;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
   }}
   .header p {{
     margin: 8px 0 0 0;
-    font-size: 13px;
-    color: #e0e7ff;
+    font-size: 14px;
+    color: #c7d2fe;
     font-weight: 500;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
   }}
   .content {{
-    padding: 32px;
-    color: #334155;
+    padding: 40px 32px;
+    color: #374151;
     line-height: 1.6;
     font-size: 15px;
   }}
   .greeting {{
     font-weight: 700;
-    font-size: 16px;
-    color: #1e293b;
+    font-size: 18px;
+    color: #111827;
     margin-bottom: 16px;
   }}
+  .intro-text {{
+    font-size: 15px;
+    color: #4b5563;
+    margin-bottom: 24px;
+  }}
   .job-card {{
-    background-color: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 20px;
-    margin: 24px 0;
+    background-color: #f9fafb;
+    border-left: 4px solid #4f46e5;
+    border-top: 1px solid #f3f4f6;
+    border-right: 1px solid #f3f4f6;
+    border-bottom: 1px solid #f3f4f6;
+    border-radius: 0 12px 12px 0;
+    padding: 24px;
+    margin: 28px 0;
   }}
   .job-title-row {{
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 800;
-    color: #1e293b;
+    color: #111827;
     margin-bottom: 12px;
-    text-transform: uppercase;
     letter-spacing: -0.01em;
   }}
   .job-detail {{
-    font-size: 13px;
-    color: #475569;
-    margin: 6px 0;
+    font-size: 14px;
+    color: #4b5563;
+    margin: 8px 0;
   }}
   .job-detail strong {{
-    color: #334155;
+    color: #1f2937;
     width: 90px;
     display: inline-block;
   }}
+  .cta-section {{
+    text-align: center;
+    margin: 32px 0;
+  }}
+  .cta-button {{
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    color: #ffffff !important;
+    padding: 14px 28px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    letter-spacing: 0.01em;
+  }}
   .signature {{
-    margin-top: 32px;
-    border-top: 1px solid #f1f5f9;
+    margin-top: 36px;
+    border-top: 1px solid #f3f4f6;
     padding-top: 24px;
     font-size: 14px;
-    color: #475569;
+    color: #4b5563;
   }}
   .signature-name {{
     font-weight: 700;
-    color: #1e293b;
+    color: #111827;
+  }}
+  .signature-role {{
+    color: #6b7280;
+    font-size: 13px;
   }}
   .footer {{
-    background-color: #f8fafc;
-    padding: 24px;
+    background-color: #f9fafb;
+    padding: 28px 32px;
     text-align: center;
     font-size: 11px;
-    color: #94a3b8;
-    border-top: 1px solid #f1f5f9;
-    line-height: 1.5;
+    color: #9ca3af;
+    border-top: 1px solid #f3f4f6;
+    line-height: 1.6;
+  }}
+  .footer a {{
+    color: #6b7280;
+    text-decoration: underline;
   }}
 </style>
 </head>
@@ -208,12 +255,13 @@ def send_candidate_invite_email(
 <div class="wrapper">
   <div class="container">
     <div class="header">
+      <div class="header-badge">Talent Vector HR</div>
       <h1>Interview Invitation</h1>
-      <p>Talent Vector Sourcing</p>
+      <p>Exclusive Opportunity Match</p>
     </div>
     <div class="content">
       <div class="greeting">Dear {candidate_name},</div>
-      <p>We are excited to invite you for an interview for the <strong>{job_title}</strong> position at <strong>{company_name}</strong>. Our team was highly impressed by your qualifications and match profile.</p>
+      <p class="intro-text">After reviewing your background and profile in our automated talent vetting system, we were highly impressed by your experience. We would like to officially invite you for an interview for the following position:</p>
       
       <div class="job-card">
         <div class="job-title-row">{job_title}</div>
@@ -222,17 +270,21 @@ def send_candidate_invite_email(
         {website_row}
       </div>
 
-      <p>{recruiter_name} ({recruiter_role}) from our talent acquisition team will be in touch shortly to coordinate the next steps and schedule a session.</p>
+      <p class="intro-text">We believe your skills align exceptionally well with our team's vision. Please click the button below to coordinate a brief introductory call later this week:</p>
+
+      <div class="cta-section">
+        <a href="{portal_url}" class="cta-button">Select Interview Time Slot</a>
+      </div>
       
       <div class="signature">
         <div class="signature-name">{recruiter_name}</div>
-        <div>{recruiter_role}</div>
-        <div style="font-weight: 600; color: #1e293b; margin-top: 4px;">{company_name}</div>
+        <div class="signature-role">{recruiter_role}</div>
+        <div style="font-weight: 600; color: #4f46e5; margin-top: 4px;">{company_name}</div>
       </div>
     </div>
     <div class="footer">
-      This email was sent on behalf of {company_name} via Talent Vector.<br>
-      You received this because your profile matched our current sourcing requirements. If you wish to opt-out, please reply to this email.
+      This email was sent on behalf of {company_name} via the Talent Vector Automated HR System.<br>
+      You received this because your professional profile matched our current sourcing criteria. If you wish to opt-out, please <a href="#">unsubscribe</a>.
     </div>
   </div>
 </div>
