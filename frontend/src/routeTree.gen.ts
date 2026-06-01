@@ -15,7 +15,6 @@ import { Route as ProfileShowcaseRouteImport } from './routes/profile-showcase'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as JdSourcingRouteImport } from './routes/jd-sourcing'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as OnboardingIndexRouteImport } from './routes/onboarding.index'
@@ -24,6 +23,7 @@ import { Route as OnboardingRecruiterRouteImport } from './routes/onboarding.rec
 import { Route as OnboardingCandidateRouteImport } from './routes/onboarding.candidate'
 import { Route as HrPortalRouteImport } from './routes/hr.portal'
 import { Route as CandidatesIdRouteImport } from './routes/candidates.$id'
+import { Route as HrJobsIndexRouteImport } from './routes/hr.jobs.index'
 import { Route as HrJobsNewRouteImport } from './routes/hr.jobs.new'
 import { Route as HrJobsJob_idResultsRouteImport } from './routes/hr.jobs.$job_id.results'
 
@@ -55,11 +55,6 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const JdSourcingRoute = JdSourcingRouteImport.update({
-  id: '/jd-sourcing',
-  path: '/jd-sourcing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrowseRoute = BrowseRouteImport.update({
@@ -102,6 +97,11 @@ const CandidatesIdRoute = CandidatesIdRouteImport.update({
   path: '/candidates/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HrJobsIndexRoute = HrJobsIndexRouteImport.update({
+  id: '/hr/jobs/',
+  path: '/hr/jobs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HrJobsNewRoute = HrJobsNewRouteImport.update({
   id: '/hr/jobs/new',
   path: '/hr/jobs/new',
@@ -116,7 +116,6 @@ const HrJobsJob_idResultsRoute = HrJobsJob_idResultsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
-  '/jd-sourcing': typeof JdSourcingRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRouteWithChildren
   '/profile': typeof ProfileRoute
@@ -130,12 +129,12 @@ export interface FileRoutesByFullPath {
   '/candidates/': typeof CandidatesIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/hr/jobs/new': typeof HrJobsNewRoute
+  '/hr/jobs/': typeof HrJobsIndexRoute
   '/hr/jobs/$job_id/results': typeof HrJobsJob_idResultsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
-  '/jd-sourcing': typeof JdSourcingRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/profile-showcase': typeof ProfileShowcaseRoute
@@ -148,13 +147,13 @@ export interface FileRoutesByTo {
   '/candidates': typeof CandidatesIndexRoute
   '/onboarding': typeof OnboardingIndexRoute
   '/hr/jobs/new': typeof HrJobsNewRoute
+  '/hr/jobs': typeof HrJobsIndexRoute
   '/hr/jobs/$job_id/results': typeof HrJobsJob_idResultsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
-  '/jd-sourcing': typeof JdSourcingRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRouteWithChildren
   '/profile': typeof ProfileRoute
@@ -168,6 +167,7 @@ export interface FileRoutesById {
   '/candidates/': typeof CandidatesIndexRoute
   '/onboarding/': typeof OnboardingIndexRoute
   '/hr/jobs/new': typeof HrJobsNewRoute
+  '/hr/jobs/': typeof HrJobsIndexRoute
   '/hr/jobs/$job_id/results': typeof HrJobsJob_idResultsRoute
 }
 export interface FileRouteTypes {
@@ -175,7 +175,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/browse'
-    | '/jd-sourcing'
     | '/login'
     | '/onboarding'
     | '/profile'
@@ -189,12 +188,12 @@ export interface FileRouteTypes {
     | '/candidates/'
     | '/onboarding/'
     | '/hr/jobs/new'
+    | '/hr/jobs/'
     | '/hr/jobs/$job_id/results'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/browse'
-    | '/jd-sourcing'
     | '/login'
     | '/profile'
     | '/profile-showcase'
@@ -207,12 +206,12 @@ export interface FileRouteTypes {
     | '/candidates'
     | '/onboarding'
     | '/hr/jobs/new'
+    | '/hr/jobs'
     | '/hr/jobs/$job_id/results'
   id:
     | '__root__'
     | '/'
     | '/browse'
-    | '/jd-sourcing'
     | '/login'
     | '/onboarding'
     | '/profile'
@@ -226,13 +225,13 @@ export interface FileRouteTypes {
     | '/candidates/'
     | '/onboarding/'
     | '/hr/jobs/new'
+    | '/hr/jobs/'
     | '/hr/jobs/$job_id/results'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BrowseRoute: typeof BrowseRoute
-  JdSourcingRoute: typeof JdSourcingRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRouteWithChildren
   ProfileRoute: typeof ProfileRoute
@@ -243,6 +242,7 @@ export interface RootRouteChildren {
   HrPortalRoute: typeof HrPortalRoute
   CandidatesIndexRoute: typeof CandidatesIndexRoute
   HrJobsNewRoute: typeof HrJobsNewRoute
+  HrJobsIndexRoute: typeof HrJobsIndexRoute
   HrJobsJob_idResultsRoute: typeof HrJobsJob_idResultsRoute
 }
 
@@ -288,13 +288,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/jd-sourcing': {
-      id: '/jd-sourcing'
-      path: '/jd-sourcing'
-      fullPath: '/jd-sourcing'
-      preLoaderRoute: typeof JdSourcingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/browse': {
@@ -353,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidatesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hr/jobs/': {
+      id: '/hr/jobs/'
+      path: '/hr/jobs'
+      fullPath: '/hr/jobs/'
+      preLoaderRoute: typeof HrJobsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hr/jobs/new': {
       id: '/hr/jobs/new'
       path: '/hr/jobs/new'
@@ -389,7 +389,6 @@ const OnboardingRouteWithChildren = OnboardingRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BrowseRoute: BrowseRoute,
-  JdSourcingRoute: JdSourcingRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRouteWithChildren,
   ProfileRoute: ProfileRoute,
@@ -400,6 +399,7 @@ const rootRouteChildren: RootRouteChildren = {
   HrPortalRoute: HrPortalRoute,
   CandidatesIndexRoute: CandidatesIndexRoute,
   HrJobsNewRoute: HrJobsNewRoute,
+  HrJobsIndexRoute: HrJobsIndexRoute,
   HrJobsJob_idResultsRoute: HrJobsJob_idResultsRoute,
 }
 export const routeTree = rootRouteImport

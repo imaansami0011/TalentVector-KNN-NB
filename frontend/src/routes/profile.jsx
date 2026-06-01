@@ -16,7 +16,9 @@ import {
   Sparkles,
   Bell,
   Building2,
-  Loader2
+  Loader2,
+  Upload,
+  X
 } from "lucide-react"
 
 export const Route = createFileRoute("/profile")({
@@ -33,6 +35,9 @@ function ProfilePage() {
   const [email, setEmail] = React.useState("")
   const [role, setRole] = React.useState("")
   const [bio, setBio] = React.useState("")
+  const [logo, setLogo] = React.useState("")
+  const [logoUrlInput, setLogoUrlInput] = React.useState("")
+  const logoFileRef = React.useRef(null)
 
   // Top Pakistan IT Companies
   const pakTopCompanies = React.useMemo(() => [
@@ -57,9 +62,62 @@ function ProfilePage() {
     "Other"
   ], [])
 
+  // Seeded company metadata for auto-prefilling
+  const COMPANY_METADATA = React.useMemo(() => ({
+    "Systems Limited": {
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Systems_Limited_logo.png/200px-Systems_Limited_logo.png",
+      website: "https://www.systemsltd.com",
+      hq_location: "Lahore",
+      workplace_type: "Hybrid",
+      address: "Software Technology Park, Lahore, Pakistan",
+    },
+    "Arbisoft": {
+      logo: "https://arbisoft.com/wp-content/uploads/2022/02/arbisoft-logo-dark.svg",
+      website: "https://arbisoft.com",
+      hq_location: "Lahore",
+      workplace_type: "Remote",
+      address: "Johar Town, Lahore, Pakistan",
+    },
+    "Netsol Technologies": {
+      logo: "https://www.netsoltech.com/wp-content/uploads/2023/01/netsol-logo.png",
+      website: "https://www.netsoltech.com",
+      hq_location: "Lahore",
+      workplace_type: "Onsite",
+      address: "Software Technology Park, Lahore, Pakistan",
+    },
+    "NetSol Technologies": {
+      logo: "https://www.netsoltech.com/wp-content/uploads/2023/01/netsol-logo.png",
+      website: "https://www.netsoltech.com",
+      hq_location: "Lahore",
+      workplace_type: "Onsite",
+      address: "Software Technology Park, Lahore, Pakistan",
+    },
+    "10Pearls": {
+      logo: "https://10pearls.com/wp-content/uploads/2022/07/10pearls-logo-v2.png",
+      website: "https://10pearls.com",
+      hq_location: "Karachi",
+      workplace_type: "Remote",
+      address: "Clifton, Karachi, Pakistan",
+    },
+    "Tkxel": {
+      logo: "https://tkxel.com/wp-content/uploads/2022/04/tkxel-logo.svg",
+      website: "https://tkxel.com",
+      hq_location: "Lahore",
+      workplace_type: "Hybrid",
+      address: "DHA Phase 6, Lahore, Pakistan",
+    },
+    "Confiz": {
+      logo: "https://confiz.com/wp-content/uploads/2022/04/Confiz-logo.png",
+      website: "https://confiz.com",
+      hq_location: "Lahore",
+      workplace_type: "Hybrid",
+      address: "Township, Lahore, Pakistan",
+    },
+  }), [])
+
   // Company State
   const [company, setCompany] = React.useState("")
-  const [selectedPakCompany, setSelectedPakCompany] = React.useState("Systems Limited")
+  const [selectedPakCompany, setSelectedPakCompany] = React.useState("")
   const [customCompanyName, setCustomCompanyName] = React.useState("")
   const [website, setWebsite] = React.useState("")
   const [hq, setHq] = React.useState("")
@@ -83,7 +141,10 @@ function ProfilePage() {
     queryKey: ["recruiterProfile", userId],
     queryFn: async () => {
       const res = await fetch("http://localhost:8000/recruiter/profile", {
-        headers: { "x-user-id": userId },
+        headers: { 
+          "x-user-id": userId,
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
       })
       if (!res.ok) throw new Error("Failed to fetch profile")
       return res.json()
@@ -113,6 +174,10 @@ function ProfilePage() {
         if (profileData.company.hq_location) setHq(profileData.company.hq_location)
         if (profileData.company.address) setAddress(profileData.company.address)
         if (profileData.company.workplace_type) setWorkplaceType(profileData.company.workplace_type)
+        if (profileData.company.logo) {
+          setLogo(profileData.company.logo)
+          localStorage.setItem("company_logo", profileData.company.logo)
+        }
       }
     }
   }, [profileData, pakTopCompanies])
@@ -134,6 +199,7 @@ function ProfilePage() {
         headers: {
           "Content-Type": "application/json",
           "x-user-id": userId,
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
         },
         body: JSON.stringify({
           full_name: fullName,
@@ -144,12 +210,14 @@ function ProfilePage() {
           hq_location: hq === '__other__' ? '' : hq,
           workplace_type: workplaceType,
           address: address,
+          logo: logo,
         }),
       })
       if (!res.ok) {
         throw new Error("Failed to update profile settings.")
       }
       toast.success("Profile and workspace configurations updated successfully!")
+      if (logo) localStorage.setItem("company_logo", logo)
     } catch (error) {
       toast.error(error.message || "Failed to update profile settings.")
     } finally {
@@ -170,7 +238,7 @@ function ProfilePage() {
 
   return (
     <AppShell>
-      <div className="p-6 md:p-8 space-y-6 max-w-5xl mx-auto animate-fadeIn select-none">
+      <div className="p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none">
         
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
@@ -266,12 +334,22 @@ function ProfilePage() {
                       setSelectedPakCompany(val)
                       if (val !== "Other") {
                         setCompany(val)
+                        // Auto-fill metadata from seeded companies
+                        const meta = COMPANY_METADATA[val]
+                        if (meta) {
+                          if (meta.website) setWebsite(meta.website)
+                          if (meta.hq_location) setHq(meta.hq_location)
+                          if (meta.workplace_type) setWorkplaceType(meta.workplace_type)
+                          if (meta.address) setAddress(meta.address)
+                          if (meta.logo) setLogo(meta.logo)
+                        }
                       } else {
                         setCompany(customCompanyName)
                       }
                     }}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-primary outline-none text-xs font-bold text-slate-800 bg-white"
                   >
+                    <option value="">Select Company</option>
                     {pakTopCompanies.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -354,6 +432,93 @@ function ProfilePage() {
               <div className="space-y-1">
                 <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Office Address</label>
                 <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+              </div>
+
+              {/* Company Logo Section */}
+              <div className="space-y-2 pt-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Company Logo</label>
+                <div className="flex items-start gap-4">
+                  {/* Logo Preview */}
+                  <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center overflow-hidden shrink-0 transition-all duration-300 hover:border-primary/30">
+                    {logo ? (
+                      <img
+                        src={logo}
+                        alt="Company logo"
+                        className="w-full h-full object-contain p-1"
+                        onError={(e) => {
+                          if (logo && !logo.startsWith("data:")) {
+                            setLogo("")
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Building2 className="w-6 h-6 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2">
+                    {/* File Upload Button */}
+                    <input
+                      ref={logoFileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.warning("Logo file must be under 2 MB.")
+                          return
+                        }
+                        const reader = new FileReader()
+                        reader.onload = (ev) => {
+                          setLogo(ev.target.result)
+                          setLogoUrlInput("")
+                          toast.success("Logo uploaded successfully!")
+                        }
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => logoFileRef.current?.click()}
+                      className="h-7 text-[9px] font-black uppercase tracking-widest border-slate-200 hover:border-primary hover:bg-primary/5 transition-all rounded-lg"
+                    >
+                      <Upload className="w-3 h-3 mr-1.5" />
+                      Upload Image
+                    </Button>
+
+                    {/* OR paste URL */}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Or paste logo URL…"
+                        value={logoUrlInput}
+                        onChange={(e) => setLogoUrlInput(e.target.value)}
+                        onBlur={() => {
+                          if (logoUrlInput.trim()) setLogo(logoUrlInput.trim())
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            if (logoUrlInput.trim()) setLogo(logoUrlInput.trim())
+                          }
+                        }}
+                        className="text-[11px] h-7"
+                      />
+                      {logo && (
+                        <button
+                          type="button"
+                          onClick={() => { setLogo(""); setLogoUrlInput("") }}
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

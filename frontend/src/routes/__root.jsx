@@ -19,16 +19,6 @@ const queryClient = new QueryClient({
 })
 
 function RootComponent() {
-  React.useEffect(() => {
-    // Automatic bypass: populate default Recruiter credentials if not logged in
-    if (!localStorage.getItem("user_id")) {
-      localStorage.setItem("user_id", "default_recruiter")
-      localStorage.setItem("user_name", "Imaan Sami Khan (Bypass)")
-      localStorage.setItem("user_email", "recruiter@example.com")
-      localStorage.setItem("user_role", "hr")
-      localStorage.setItem("onboarded", "true")
-    }
-  }, [])
 
   return (
     <QueryClientProvider client={queryClient}>

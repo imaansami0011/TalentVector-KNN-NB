@@ -17,32 +17,180 @@ function IdentityGateway() {
   const [googleStep, setGoogleStep] = React.useState("select") // 'select' | 'custom'
   const [googleEmail, setGoogleEmail] = React.useState("")
   const [googleLoading, setGoogleLoading] = React.useState(false)
+  const [missingRoleInfo, setMissingRoleInfo] = React.useState(null)
 
   const navigate = useNavigate()
 
-  const handleEmailSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault()
-    // Simulate checking database -> trigger OTP/Password
-    setStep("otp")
-    toast.info("A 6-digit OTP code has been simulated.")
+    try {
+      const response = await fetch("http://localhost:8000/auth/register-init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role: role === "hr" ? "recruiter" : "candidate" })
+      })
+      if (response.ok) {
+        setStep("otp")
+        toast.info("A 6-digit OTP code has been sent to your email.")
+      } else {
+        const errorData = await response.json()
+        if (errorData.detail === "User already exists") {
+          setStep("login")
+          toast.info("Welcome back! Please enter your password.")
+        } else {
+          toast.error(errorData.detail || "Failed to initialize registration.")
+        }
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to connect to authentication server. Is the backend running?")
+    }
   }
 
   const handleOtpSubmit = (e) => {
     e.preventDefault()
     setStep("password")
-    toast.success("OTP verified (simulation).")
+    toast.success("OTP verified.")
   }
 
-  const handlePasswordSubmit = (e) => {
+  const performLogin = async (loginEmail, loginPassword, createMissing = false) => {
+    try {
+      const response = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+          role: role === "hr" ? "recruiter" : "candidate",
+          create_missing: createMissing
+        })
+      })
+
+      if (response.status === 409) {
+        const errorData = await response.json()
+        if (errorData.detail && errorData.detail.startsWith("role_missing:")) {
+          const existingRole = errorData.detail.split(":")[1]
+          setMissingRoleInfo({
+            email: loginEmail,
+            password: loginPassword,
+            targetRole: role === "hr" ? "recruiter" : "candidate",
+            existingRole: existingRole,
+            type: "password"
+          })
+          return
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        toast.error(errorData.detail || "Login failed. Please check your credentials.")
+        return
+      }
+
+      const data = await response.json()
+      localStorage.setItem("access_token", data.access_token)
+      localStorage.setItem("user_id", data.user_id || loginEmail)
+      localStorage.setItem("user_email", loginEmail)
+      localStorage.setItem("user_role", data.role || (role === "hr" ? "recruiter" : "candidate"))
+      localStorage.setItem("user_name", loginEmail.split("@")[0])
+
+      toast.success("Logged in successfully!")
+      navigate({ to: "/onboarding" })
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to log in. Make sure backend is running.")
+    }
+  }
+
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault()
-    toast.success("Logged in successfully!")
-    localStorage.setItem("user_id", email)
-    localStorage.setItem("user_email", email)
-    localStorage.setItem("user_name", email.split("@")[0])
-    localStorage.setItem("user_role", role)
-    
-    // Always navigate to /onboarding so role-based redirection can route them properly
-    navigate({ to: "/onboarding" })
+    try {
+      const response = await fetch("http://localhost:8000/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          otp,
+          password,
+          role: role === "hr" ? "recruiter" : "candidate"
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        toast.error(errorData.detail || "Verification failed. Please check your OTP.")
+        return
+      }
+
+      await performLogin(email, password)
+    } catch (err) {
+      console.error(err)
+      toast.error("Failed to register. Make sure backend is running.")
+    }
+  }
+
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault()
+    await performLogin(email, password)
+  }
+
+  const performGoogleLogin = async (googleEmail, googleName, googleToken, createMissing = false) => {
+    setGoogleLoading(true)
+    setStep("google-signin")
+    try {
+      const backendRes = await fetch("http://localhost:8000/auth/google", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: googleEmail,
+          name: googleName || "Google User",
+          role: role === "hr" ? "recruiter" : "candidate",
+          create_missing: createMissing
+        }),
+      })
+
+      if (backendRes.status === 409) {
+        const errorData = await backendRes.json()
+        if (errorData.detail && errorData.detail.startsWith("role_missing:")) {
+          const existingRole = errorData.detail.split(":")[1]
+          setMissingRoleInfo({
+            email: googleEmail,
+            name: googleName,
+            targetRole: role === "hr" ? "recruiter" : "candidate",
+            existingRole: existingRole,
+            googleToken: googleToken,
+            type: "google"
+          })
+          setStep("email")
+          return
+        }
+      }
+
+      if (!backendRes.ok) {
+        throw new Error("Backend authentication failed")
+      }
+
+      const authData = await backendRes.json()
+
+      localStorage.setItem("access_token", authData.access_token)
+      localStorage.setItem("user_name", googleName || "Google User")
+      localStorage.setItem("user_id", authData.user_id || googleEmail)
+      localStorage.setItem("user_email", googleEmail)
+      localStorage.setItem("user_picture", `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(googleEmail)}`)
+      localStorage.setItem("user_role", authData.role || (role === "hr" ? "recruiter" : "candidate"))
+
+      toast.success(`Google Signed in: ${googleEmail}`)
+      
+      navigate({ to: "/onboarding" })
+    } catch (error) {
+      console.error(error)
+      toast.error(error.message || "Google Sign-In failed.")
+      setStep("email")
+    } finally {
+      setGoogleLoading(false)
+    }
   }
 
   const handleGoogleLoginSuccess = async (googleToken) => {
@@ -56,40 +204,11 @@ function IdentityGateway() {
         throw new Error("Failed to fetch Google profile info")
       }
       const profile = await res.json()
-      
-      const backendRes = await fetch("http://localhost:8000/auth/google", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: profile.email,
-          name: profile.name || profile.given_name || "Google User",
-        }),
-      })
-
-      if (!backendRes.ok) {
-        throw new Error("Backend authentication failed")
-      }
-
-      const authData = await backendRes.json()
-
-      localStorage.setItem("access_token", authData.access_token)
-      localStorage.setItem("user_name", profile.name || profile.given_name || "Google User")
-      localStorage.setItem("user_id", authData.user_id || profile.email)
-      localStorage.setItem("user_email", profile.email)
-      localStorage.setItem("user_picture", profile.picture || `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(profile.email)}`)
-      localStorage.setItem("user_role", authData.role || role)
-
-      toast.success(`Google Signed in: ${profile.email}`)
-      
-      // Navigate to /onboarding to trigger the role-based redirection hub
-      navigate({ to: "/onboarding" })
+      await performGoogleLogin(profile.email, profile.name || profile.given_name, googleToken, false)
     } catch (error) {
       console.error(error)
       toast.error(error.message || "Google Sign-In failed.")
       setStep("email")
-    } finally {
       setGoogleLoading(false)
     }
   }
@@ -397,6 +516,51 @@ function IdentityGateway() {
             </form>
           )}
 
+          {step === "login" && (
+            <form onSubmit={handleLoginSubmit} className="space-y-5 animate-fadeIn">
+              <div className="text-center mb-4">
+                <h3 className="text-base font-black uppercase tracking-tight text-slate-800">Welcome Back</h3>
+                <p className="text-xs text-slate-500 mt-1 font-medium">Enter your password to sign in</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 block">Password</label>
+                <div className="relative group">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500/20 to-transparent rounded-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative flex items-center">
+                    <KeyRound className="absolute left-4 w-5 h-5 text-slate-400 transition-colors group-focus-within:text-indigo-600" />
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-12 pr-4 py-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 backdrop-blur-sm focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-sm font-semibold text-slate-800 placeholder:text-slate-300 shadow-inner"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                type="submit" 
+                className="group relative w-full py-4 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 overflow-hidden rounded-2xl transition-all duration-500 shadow-md shadow-indigo-500/20 hover:shadow-lg hover:shadow-indigo-500/30 hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                <div className="relative flex items-center justify-center gap-3">
+                  <span className="text-white font-black uppercase tracking-[0.2em] text-[10px]">Log In</span>
+                  <ArrowRight className="w-4 h-4 text-white transition-transform group-hover:translate-x-1" />
+                </div>
+              </button>
+              
+              <button 
+                type="button" 
+                onClick={() => setStep("email")} 
+                className="w-full py-1 text-slate-400 font-black uppercase tracking-widest text-[9px] hover:text-slate-700 transition-colors"
+              >
+                Back to email
+              </button>
+            </form>
+          )}
+
           {step === "google-signin" && (
             <div className="space-y-6 animate-fadeIn">
               <style>{`
@@ -441,6 +605,58 @@ function IdentityGateway() {
 
         </div>
       </div>
+
+      {/* CONFIRMATION POPUP FOR MULTI-ROLE AUTO-PROVISIONING */}
+      {missingRoleInfo && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 select-none animate-fadeIn">
+          <div className="bg-white border border-slate-200 shadow-2xl max-w-sm w-full p-6 relative rounded-3xl space-y-5 animate-scaleIn">
+            
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-500/10 rounded-2xl">
+                <Sparkles className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-base font-black uppercase tracking-tight text-slate-900">
+                  {missingRoleInfo.targetRole === "recruiter" ? "Recruiter Account" : "Job Seeker Account"}
+                </h3>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Create Profile</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              {missingRoleInfo.targetRole === "recruiter" 
+                ? "Do you want to be a recruiter and post jobs?" 
+                : "Do you want to be a job seeker and search for jobs?"}
+            </p>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setMissingRoleInfo(null)}
+                className="flex-grow h-10 font-bold text-xs uppercase tracking-wider border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-500 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const info = missingRoleInfo
+                  setMissingRoleInfo(null)
+                  if (info.type === "password") {
+                    await performLogin(info.email, info.password, true)
+                  } else {
+                    await performGoogleLogin(info.email, info.name, info.googleToken, true)
+                  }
+                }}
+                className="flex-grow h-10 font-bold text-xs uppercase tracking-wider shadow-md shadow-primary/10 rounded-xl bg-primary text-white hover:bg-primary/95 transition-all cursor-pointer"
+              >
+                Yes
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }

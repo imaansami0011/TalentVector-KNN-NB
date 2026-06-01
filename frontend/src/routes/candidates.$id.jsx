@@ -1,6 +1,8 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { AppShell } from "../components/app-shell"
+import { AdPanel } from "../components/ad-panel"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -8,6 +10,7 @@ import { Badge } from "../components/ui/badge"
 import { Progress } from "../components/ui/progress"
 import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar"
 import { toast } from "sonner"
+import { cn } from "../lib/utils"
 import { 
   ArrowLeft, 
   Mail, 
@@ -17,28 +20,41 @@ import {
   GraduationCap, 
   CheckCircle2, 
   XCircle,
-  MessageSquare,
   Download,
   Star,
   Sparkles,
-  Loader2
+  Loader2,
+  Copy,
+  X,
+  ChevronRight,
+  AlertCircle
 } from "lucide-react"
 
 export const Route = createFileRoute("/candidates/$id")({
+  validateSearch: (search) => ({
+    jd_id: search.jd_id || "",
+  }),
   component: CandidateDetailPage,
 })
 
 function CandidateDetailPage() {
   const { id } = useParams({ from: "/candidates/$id" })
+  const { jd_id } = Route.useSearch()
   const userId = localStorage.getItem("user_id")
   const queryClient = useQueryClient()
 
   // Fetch candidate details
   const { data: cand, isLoading } = useQuery({
-    queryKey: ["candidateDetails", id],
+    queryKey: ["candidateDetails", id, jd_id],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/recruiter/candidates/${id}`, {
-        headers: { "x-user-id": userId ?? "" },
+      const url = jd_id 
+        ? `http://localhost:8000/recruiter/candidates/${id}?jd_id=${jd_id}`
+        : `http://localhost:8000/recruiter/candidates/${id}`
+      const res = await fetch(url, {
+        headers: { 
+          "x-user-id": userId ?? "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
       })
       if (!res.ok) throw new Error("Failed to fetch candidate details")
       return res.json()
@@ -54,6 +70,7 @@ function CandidateDetailPage() {
         headers: {
           "Content-Type": "application/json",
           "x-user-id": userId ?? "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
         },
         body: JSON.stringify({ status: newStatus }),
       })
@@ -95,17 +112,75 @@ function CandidateDetailPage() {
     )
   }
 
+  // Normalize fields with safe fallbacks
+  const name = cand.name || "Unknown Candidate"
+  const title = cand.title || cand.designation || "Candidate"
+  const email = cand.email || "Not Found"
+  const phone = cand.phone || "Not Found"
+  const location = cand.location || "Not specified"
+  const avatar = cand.avatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(name)}`
+  const status = cand.status || "new"
+  const score = cand.score ?? (cand.match_score_percentage != null ? Math.round(cand.match_score_percentage) : null)
+  const skillMatch = cand.skillMatch ?? cand.skill_match ?? (score != null ? Math.round(score * 0.85) : null)
+  const expMatch = cand.expMatch ?? cand.exp_match ?? (score != null ? Math.round(score * 1.1) : null)
+  const skills = cand.skills || cand.skills_extracted || []
+  const experiences = cand.experiences || []
+  const education = cand.education || []
+
+  // Derived state for status updates
+  const isPending = updateStatusMutation.isPending
+  const pendingStatus = updateStatusMutation.variables
+  const activeStatus = isPending ? pendingStatus : status
+
+  const isShortlisting = isPending && pendingStatus === "shortlisted"
+  const isRejecting = isPending && pendingStatus === "rejected"
+
   const handleShortlist = () => {
-    updateStatusMutation.mutate("shortlisted")
+    const nextStatus = status === "shortlisted" ? "new" : "shortlisted"
+    updateStatusMutation.mutate(nextStatus)
   }
 
   const handleReject = () => {
-    updateStatusMutation.mutate("rejected")
+    const nextStatus = status === "rejected" ? "new" : "rejected"
+    updateStatusMutation.mutate(nextStatus)
+  }
+
+  const [showContactModal, setShowContactModal] = React.useState(false)
+
+  const emailSubject = React.useMemo(() => {
+    const sector = cand.domain || cand.sector || 'Technology'
+    return `Exciting Opportunity – ${sector} Role`
+  }, [cand])
+
+  const emailBody = React.useMemo(() => {
+    const candidateName = name || 'there'
+    const sector = cand.domain || cand.sector || 'Technology'
+    const topSkills = skills.slice(0, 3).join(', ')
+    return `Hi ${candidateName},
+
+I came across your profile on Talent Vector and was really impressed by your background in ${sector}${topSkills ? ` and your expertise in ${topSkills}` : ''}.
+
+We have an exciting opportunity that I believe aligns well with your experience and skill set. I'd love to schedule a quick call to discuss this further.
+
+Would you be available for a brief conversation this week?
+
+Looking forward to hearing from you.
+
+Best regards,
+[Your Name]
+[Your Title]
+[Company Name]`
+  }, [cand, name, skills])
+
+  const handleCopyDraft = () => {
+    const textToCopy = `To: ${email}\nSubject: ${emailSubject}\n\n${emailBody}`
+    navigator.clipboard.writeText(textToCopy)
+    toast.success("Draft email details copied to clipboard!")
   }
 
   return (
-    <AppShell>
-      <div className="p-6 md:p-8 space-y-6 max-w-6xl mx-auto animate-fadeIn select-none">
+    <AppShell rightPanel={<AdPanel />}>
+      <div className="p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none">
         
         {/* Back Link */}
         <Link 
@@ -117,68 +192,120 @@ function CandidateDetailPage() {
         </Link>
 
         {/* Profile Header Card */}
-        <Card className="overflow-hidden bg-white border border-border">
+        <Card className={cn(
+          "overflow-hidden bg-white border transition-all duration-500 ease-in-out shadow-sm",
+          activeStatus === "shortlisted" && "border-emerald-300 shadow-md shadow-emerald-500/5 bg-emerald-50/5",
+          activeStatus === "rejected" && "border-red-300 shadow-md shadow-red-500/5 bg-red-50/5"
+        )}>
           {/* Gradient Banner Top */}
-          <div className="h-20 bg-gradient-to-r from-primary/10 via-blue-400/5 to-transparent border-b border-border/20" />
+          <div className={cn(
+            "h-20 bg-gradient-to-r transition-all duration-500 ease-in-out border-b border-border/20",
+            activeStatus === "shortlisted"
+              ? "from-emerald-500/10 via-emerald-400/5 to-transparent"
+              : activeStatus === "rejected"
+              ? "from-red-500/10 via-red-400/5 to-transparent"
+              : "from-primary/10 via-blue-400/5 to-transparent"
+          )} />
           
           <div className="p-6 md:p-8 pt-0 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-10">
             {/* Avatar & Details */}
             <div className="flex flex-col md:flex-row items-start md:items-end gap-5">
               <Avatar className="w-24 h-24 border-4 border-white bg-slate-50 shadow-md">
-                <AvatarImage src={cand.avatar} alt={cand.name} />
-                <AvatarFallback>{cand.name[0]}</AvatarFallback>
+                <AvatarImage src={avatar} alt={name} />
+                <AvatarFallback>{name[0]}</AvatarFallback>
               </Avatar>
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-2xl font-black text-slate-900 leading-none uppercase">{cand.name}</h1>
-                  <Badge variant={cand.status}>{cand.status}</Badge>
+                  <h1 className="text-2xl font-black text-slate-900 leading-none uppercase">{name}</h1>
+                  <Badge 
+                    variant={activeStatus}
+                    className={cn(
+                      "transition-all duration-300 flex items-center gap-1",
+                      isPending && "animate-pulse opacity-70"
+                    )}
+                  >
+                    {isPending && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                    {activeStatus}
+                  </Badge>
                 </div>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{cand.title}</p>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{title}</p>
                 
                 {/* Contact row */}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                   <div className="flex items-center gap-1">
                     <Mail className="w-3.5 h-3.5" />
-                    <span>{cand.email}</span>
+                    <span>{email}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Phone className="w-3.5 h-3.5" />
-                    <span>{cand.phone}</span>
+                    <span>{phone}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
-                    <span>{cand.location}</span>
+                    <span>{location}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Match Score Display */}
-            <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 border border-border shrink-0 text-center w-32 shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Match Fit</span>
-              <div className="font-display text-4xl font-black text-primary my-1 leading-none">
-                {cand.score}
+            {score != null && (
+              <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 border border-border shrink-0 text-center w-32 shadow-sm animate-fadeIn">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Match Fit</span>
+                <div className="font-display text-4xl font-black text-primary my-1 leading-none">
+                  {score}
+                </div>
+                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Weighted Score</span>
               </div>
-              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Weighted Score</span>
-            </div>
+            )}
           </div>
 
           {/* Action Row */}
           <div className="bg-slate-50 border-t border-border px-6 md:px-8 py-4 flex flex-wrap gap-3 justify-end">
-            <Button variant="outline" size="sm" onClick={() => toast.info("Opening resume PDF...")}>
+            <Button variant="outline" size="sm" onClick={() => toast.info("Opening resume PDF...")} disabled={isPending}>
               <Download className="w-3.5 h-3.5 mr-1" />
               Resume
             </Button>
-            <Button variant="outline" size="sm" onClick={() => toast.info(`Message console loaded for ${cand.name}`)}>
-              <MessageSquare className="w-3.5 h-3.5 mr-1" />
-              Message
+            <Button variant="outline" size="sm" onClick={() => setShowContactModal(true)} disabled={isPending}>
+              <Mail className="w-3.5 h-3.5 mr-1" />
+              Contact
             </Button>
-            <Button variant="destructive" size="sm" onClick={handleReject} disabled={updateStatusMutation.isPending}>
-              <XCircle className="w-3.5 h-3.5 mr-1" />
+            <Button 
+              variant={activeStatus === "rejected" ? "destructive" : "outline"} 
+              size="sm" 
+              onClick={handleReject} 
+              disabled={isPending}
+              className={cn(
+                "transition-all duration-350 ease-in-out",
+                activeStatus === "rejected" 
+                  ? "bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-500/10 border-red-600" 
+                  : "text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-250 border-slate-200"
+              )}
+            >
+              {isRejecting ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+              ) : (
+                <XCircle className="w-3.5 h-3.5 mr-1" />
+              )}
               Reject
             </Button>
-            <Button size="sm" onClick={handleShortlist} disabled={updateStatusMutation.isPending}>
-              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+            <Button 
+              variant={activeStatus === "shortlisted" ? "default" : "outline"} 
+              size="sm" 
+              onClick={handleShortlist} 
+              disabled={isPending}
+              className={cn(
+                "transition-all duration-350 ease-in-out",
+                activeStatus === "shortlisted" 
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-500/10 border-emerald-600" 
+                  : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-250 border-slate-200"
+              )}
+            >
+              {isShortlisting ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+              )}
               Shortlist
             </Button>
           </div>
@@ -195,36 +322,59 @@ function CandidateDetailPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-5">
               
-              {/* Skill Match */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  <span>Skill Match (70%)</span>
-                  <span className="text-primary font-bold">{cand.skillMatch || 0}%</span>
-                </div>
-                <Progress value={cand.skillMatch || 0} className="h-1.5" />
-                <p className="text-[9px] text-slate-400 font-medium">TF-IDF cosine similarity of resume skill tokens.</p>
-              </div>
+              {score != null ? (
+                <>
+                  {/* Skill Match */}
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <span>Skill Match (70%)</span>
+                      <span className="text-primary font-bold">{skillMatch}%</span>
+                    </div>
+                    <Progress value={skillMatch} className="h-1.5" />
+                    <p className="text-[9px] text-slate-400 font-medium">TF-IDF cosine similarity of resume skill tokens.</p>
+                  </div>
 
-              {/* Experience Match */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  <span>Experience Match (30%)</span>
-                  <span className="text-primary font-bold">{cand.expMatch || 0}%</span>
-                </div>
-                <Progress value={cand.expMatch || 0} className="h-1.5" />
-                <p className="text-[9px] text-slate-400 font-medium">Parsed duration vs. JD target experience thresholds.</p>
-              </div>
+                  {/* Experience Match */}
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <span>Experience Match (30%)</span>
+                      <span className="text-primary font-bold">{expMatch}%</span>
+                    </div>
+                    <Progress value={expMatch} className="h-1.5" />
+                    <p className="text-[9px] text-slate-400 font-medium">Parsed duration vs. JD target experience thresholds.</p>
+                  </div>
 
-              {/* Overall Summary */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between mt-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4.5 h-4.5 text-primary" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">Recommendation</span>
+                  {/* Overall Summary */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between mt-4 animate-fadeIn">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4.5 h-4.5 text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">Recommendation</span>
+                    </div>
+                    <Badge variant={score >= 80 ? "shortlisted" : score >= 70 ? "review" : "rejected"}>
+                      {score >= 80 ? "High Fit" : score >= 70 ? "Medium Fit" : "Low Fit"}
+                    </Badge>
+                  </div>
+                </>
+              ) : (
+                <div className="py-6 text-center space-y-4 animate-fadeIn">
+                  <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+                  <div className="space-y-1.5">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-700">No Job Selected</h4>
+                    <p className="text-[10px] text-slate-450 font-bold leading-relaxed">
+                      Please select a job description pipeline from the Talent Pool to view real calculated match scores and evaluation details.
+                    </p>
+                  </div>
+                  <Link 
+                    to="/candidates"
+                    search={{ jd_id: undefined }}
+                    className="inline-block"
+                  >
+                    <Button variant="outline" size="sm" className="h-8 text-[9px] uppercase tracking-widest font-black rounded-xl">
+                      Back to Talent Pool
+                    </Button>
+                  </Link>
                 </div>
-                <Badge variant={cand.score >= 80 ? "shortlisted" : cand.score >= 70 ? "review" : "rejected"}>
-                  {cand.score >= 80 ? "High Fit" : cand.score >= 70 ? "Medium Fit" : "Low Fit"}
-                </Badge>
-              </div>
+              )}
 
             </CardContent>
           </Card>
@@ -239,7 +389,7 @@ function CandidateDetailPage() {
                 <CardDescription>Extracted key competencies from CV text block.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
-                {cand.skills?.map((skill, index) => (
+                {skills.map((skill, index) => (
                   <span 
                     key={index} 
                     className="px-3.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest"
@@ -247,6 +397,9 @@ function CandidateDetailPage() {
                     {skill}
                   </span>
                 ))}
+                {skills.length === 0 && (
+                  <p className="text-xs text-slate-400 italic">No skills data extracted for this candidate.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -257,21 +410,23 @@ function CandidateDetailPage() {
                 <CardDescription>Calculated sequence of work history records.</CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
-                {cand.experiences?.map((exp, index) => (
+                {experiences.length > 0 ? experiences.map((exp, index) => (
                   <div key={index} className="flex gap-4 items-start">
                     <div className="w-9 h-9 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
                       <Briefcase className="w-4.5 h-4.5" />
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">{exp.role}</h4>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">{exp.period}</span>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">{exp.role || exp.title || exp.designation || "Role"}</h4>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">{exp.period || exp.duration || ""}</span>
                       </div>
-                      <p className="text-[10px] text-primary font-black uppercase tracking-widest">{exp.company}</p>
-                      <p className="text-xs text-slate-500 leading-relaxed font-medium pt-1">{exp.summary}</p>
+                      <p className="text-[10px] text-primary font-black uppercase tracking-widest">{exp.company || "Company"}</p>
+                      <p className="text-xs text-slate-500 leading-relaxed font-medium pt-1">{exp.summary || exp.description || ""}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-xs text-slate-400 italic">No experience records available.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -282,20 +437,22 @@ function CandidateDetailPage() {
                 <CardDescription>Verified academic history records.</CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
-                {cand.education?.map((edu, index) => (
+                {education.length > 0 ? education.map((edu, index) => (
                   <div key={index} className="flex gap-4 items-start">
                     <div className="w-9 h-9 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
                       <GraduationCap className="w-4.5 h-4.5" />
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">{edu.degree}</h4>
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">{edu.year}</span>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">{edu.degree || edu.qualification || "Degree"}</h4>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">{edu.year || ""}</span>
                       </div>
-                      <p className="text-[10px] text-slate-500 font-medium">{edu.school}</p>
+                      <p className="text-[10px] text-slate-500 font-medium">{edu.school || edu.institution || "Institution"}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-xs text-slate-400 italic">No education records available.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -304,6 +461,103 @@ function CandidateDetailPage() {
         </div>
 
       </div>
+
+      {/* Contact Platform Selector Modal */}
+      {showContactModal && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => setShowContactModal(false)}
+          />
+          
+          {/* Modal Container */}
+          <div className="relative bg-white/95 backdrop-blur-lg rounded-3xl p-6 md:p-8 shadow-[0_20px_70px_rgba(15,23,42,0.15)] border border-slate-200/80 w-full max-w-md animate-in zoom-in-95 fade-in duration-300 flex flex-col gap-6 text-left">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-extrabold text-slate-900 uppercase tracking-tight">
+                    Contact Candidate
+                  </h3>
+                  <p className="text-[11px] text-slate-450 font-bold uppercase tracking-wider mt-0.5">
+                    {name}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowContactModal(false)}
+                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Candidate Details Mini Panel */}
+            <div className="bg-slate-50/80 border border-slate-200/50 rounded-2xl p-4 space-y-2 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider w-16">To:</span>
+                <span className="text-slate-800 font-bold select-all truncate">{email}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider w-16">Subject:</span>
+                <span className="text-slate-800 font-bold truncate">{emailSubject}</span>
+              </div>
+            </div>
+
+            {/* Choose Platform Option list */}
+            <div className="flex flex-col gap-3">
+              <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Choose platform</span>
+              
+              {/* Gmail Web */}
+              <a 
+                href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowContactModal(false)}
+                className="flex items-center justify-between p-4 bg-red-50/30 hover:bg-red-50/60 border border-red-100 hover:border-red-200 rounded-2xl transition-all duration-300 group cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 group-hover:scale-105 transition-transform font-bold text-xs uppercase">
+                    G
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">Open in Gmail</h4>
+                    <p className="text-[9px] text-slate-400 font-medium">Opens in new browser tab</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </a>
+
+              {/* Copy Draft & Copy Email */}
+              <button 
+                onClick={() => {
+                  handleCopyDraft()
+                  setShowContactModal(false)
+                }}
+                className="flex items-center justify-between p-4 bg-emerald-50/30 hover:bg-emerald-50/60 border border-emerald-100 hover:border-emerald-200 rounded-2xl transition-all duration-300 group cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-105 transition-transform">
+                    <Copy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">Copy Template Info</h4>
+                    <p className="text-[9px] text-slate-400 font-medium">Copies address & draft to clipboard</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </AppShell>
   )
 }

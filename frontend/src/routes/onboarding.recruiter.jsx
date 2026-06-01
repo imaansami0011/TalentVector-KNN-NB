@@ -1,6 +1,6 @@
 import * as React from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { Sparkles, Check, ArrowRight, Loader2 } from "lucide-react"
+import { Sparkles, Check, ArrowRight, Loader2, ChevronDown, Building2, ImagePlus, Upload, X } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "../components/ui/button"
 import { Card, CardContent } from "../components/ui/card"
@@ -34,9 +34,104 @@ function OnboardingTextarea({ className, ...props }) {
   )
 }
 
+function formatUrlForIFrame(url) {
+  if (!url) return ""
+  let cleanUrl = url.trim()
+  if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+    cleanUrl = "https://" + cleanUrl
+  }
+  return cleanUrl
+}
+
+function cleanUrlForDisplay(url) {
+  if (!url) return ""
+  return url.replace(/^https?:\/\//, "").trim()
+}
+
 export const Route = createFileRoute("/onboarding/recruiter")({
   component: RecruiterOnboardingPage,
 })
+
+// Seeded company metadata for auto-prefilling during onboarding
+const COMPANY_METADATA = {
+  "Systems Limited": {
+    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Systems_Limited_logo.png/200px-Systems_Limited_logo.png",
+    website: "https://www.systemsltd.com",
+    hq_location: "Lahore",
+    workplace_type: "Hybrid",
+    address: "Software Technology Park, Lahore, Pakistan",
+  },
+  "Arbisoft": {
+    logo: "https://arbisoft.com/wp-content/uploads/2022/02/arbisoft-logo-dark.svg",
+    website: "https://arbisoft.com",
+    hq_location: "Lahore",
+    workplace_type: "Remote",
+    address: "Johar Town, Lahore, Pakistan",
+  },
+  "Netsol Technologies": {
+    logo: "https://www.netsoltech.com/wp-content/uploads/2023/01/netsol-logo.png",
+    website: "https://www.netsoltech.com",
+    hq_location: "Lahore",
+    workplace_type: "Onsite",
+    address: "Software Technology Park, Lahore, Pakistan",
+  },
+  "NetSol Technologies": {
+    logo: "https://www.netsoltech.com/wp-content/uploads/2023/01/netsol-logo.png",
+    website: "https://www.netsoltech.com",
+    hq_location: "Lahore",
+    workplace_type: "Onsite",
+    address: "Software Technology Park, Lahore, Pakistan",
+  },
+  "Folio3 Software": {
+    logo: "https://www.folio3.com/wp-content/themes/folio3/images/logo/folio3-logo.svg",
+    website: "https://www.folio3.com",
+    hq_location: "Karachi",
+    workplace_type: "Hybrid",
+    address: "Shahrah-e-Faisal, Karachi, Pakistan",
+  },
+  "10Pearls": {
+    logo: "https://10pearls.com/wp-content/uploads/2022/07/10pearls-logo-v2.png",
+    website: "https://10pearls.com",
+    hq_location: "Karachi",
+    workplace_type: "Remote",
+    address: "Clifton, Karachi, Pakistan",
+  },
+  "TPS (Transaction Processing Systems)": {
+    logo: "https://www.tpsonline.com/assets/images/logo.png",
+    website: "https://www.tpsonline.com",
+    hq_location: "Karachi",
+    workplace_type: "Onsite",
+    address: "PECHS, Karachi, Pakistan",
+  },
+  "Tkxel": {
+    logo: "https://tkxel.com/wp-content/uploads/2022/04/tkxel-logo.svg",
+    website: "https://tkxel.com",
+    hq_location: "Lahore",
+    workplace_type: "Hybrid",
+    address: "DHA Phase 6, Lahore, Pakistan",
+  },
+  "i2c Inc.": {
+    logo: "https://i2cinc.com/wp-content/uploads/2021/07/i2c-logo.svg",
+    website: "https://i2cinc.com",
+    hq_location: "Lahore",
+    workplace_type: "Onsite",
+    address: "Gulberg III, Lahore, Pakistan",
+  },
+  "Confiz": {
+    logo: "https://confiz.com/wp-content/uploads/2022/04/Confiz-logo.png",
+    website: "https://confiz.com",
+    hq_location: "Lahore",
+    workplace_type: "Hybrid",
+    address: "Township, Lahore, Pakistan",
+  },
+  "Ignite (National Technology Fund)": {
+    logo: "https://ignite.org.pk/wp-content/uploads/2022/03/ignite-logo.png",
+    website: "https://ignite.org.pk",
+    hq_location: "Islamabad",
+    workplace_type: "Onsite",
+    address: "F-7, Islamabad, Pakistan",
+  },
+}
 
 function RecruiterOnboardingPage() {
   const navigate = useNavigate()
@@ -67,28 +162,68 @@ function RecruiterOnboardingPage() {
   ], [])
 
   // Form State
-  const [fullName, setFullName] = React.useState("")
-  const [workEmail, setWorkEmail] = React.useState("")
+  const [fullName, setFullName] = React.useState(() => localStorage.getItem("user_name") || "")
+  const [workEmail, setWorkEmail] = React.useState(() => localStorage.getItem("user_email") || localStorage.getItem("user_id") || "")
   const [role, setRole] = React.useState("")
   
-  const [companyName, setCompanyName] = React.useState("Systems Limited")
-  const [selectedPakCompany, setSelectedPakCompany] = React.useState("Systems Limited")
+  const [companyName, setCompanyName] = React.useState("")
+  const [selectedPakCompany, setSelectedPakCompany] = React.useState("")
   const [customCompanyName, setCustomCompanyName] = React.useState("")
   const [website, setWebsite] = React.useState("")
   const [location, setLocation] = React.useState("")
   const [workplaceType, setWorkplaceType] = React.useState("Remote")
   const [address, setAddress] = React.useState("")
+  const [logo, setLogo] = React.useState("")
+  const [logoUrlInput, setLogoUrlInput] = React.useState("")
+  const logoFileRef = React.useRef(null)
 
   const [invites, setInvites] = React.useState(["", "", ""])
 
   const userId = localStorage.getItem("user_id")
+
+  const [showDropdown, setShowDropdown] = React.useState(false)
+  const dropdownRef = React.useRef(null)
+
+  const isValidUrl = React.useMemo(() => {
+    if (!website) return false
+    const str = website.trim()
+    return str.length > 3 && (str.includes(".") || str.includes("localhost"))
+  }, [website])
+
+  const [logoError, setLogoError] = React.useState(false)
+
+  React.useEffect(() => {
+    setLogoError(false)
+  }, [website])
+
+  // Filter companies based on search query (case-insensitive)
+  const filteredCompanies = React.useMemo(() => {
+    const search = companyName.toLowerCase().trim()
+    const list = pakTopCompanies.filter(c => c !== "Other")
+    if (!search) return list
+    return list.filter(c => c.toLowerCase().includes(search))
+  }, [companyName, pakTopCompanies])
+
+  // Close dropdown on click outside
+  React.useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   // Fetch Onboarding Status
   const { data: onboardingData, isLoading: onboardingLoading } = useQuery({
     queryKey: ["checkOnboarding", userId],
     queryFn: async () => {
       const res = await fetch("http://localhost:8000/recruiter/check-onboarding", {
-        headers: { "x-user-id": userId },
+        headers: { 
+          "x-user-id": userId,
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
       })
       if (!res.ok) throw new Error("Failed to check onboarding status")
       return res.json()
@@ -101,7 +236,10 @@ function RecruiterOnboardingPage() {
     queryKey: ["recruiterProfile", userId],
     queryFn: async () => {
       const res = await fetch("http://localhost:8000/recruiter/profile", {
-        headers: { "x-user-id": userId },
+        headers: { 
+          "x-user-id": userId,
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
       })
       if (!res.ok) throw new Error("Failed to fetch profile")
       return res.json()
@@ -120,8 +258,8 @@ function RecruiterOnboardingPage() {
   // Pre-fill states from profileData once loaded
   React.useEffect(() => {
     if (profileData) {
-      if (profileData.full_name) setFullName(profileData.full_name)
-      if (profileData.email) setWorkEmail(profileData.email)
+      setFullName(profileData.full_name || localStorage.getItem("user_name") || "")
+      setWorkEmail(profileData.email || localStorage.getItem("user_email") || localStorage.getItem("user_id") || "")
       if (profileData.role_title) setRole(profileData.role_title)
       if (profileData.company) {
         const cName = profileData.company.company_name || ""
@@ -138,6 +276,10 @@ function RecruiterOnboardingPage() {
         if (profileData.company.hq_location) setLocation(profileData.company.hq_location)
         if (profileData.company.address) setAddress(profileData.company.address)
         if (profileData.company.workplace_type) setWorkplaceType(profileData.company.workplace_type)
+        if (profileData.company.logo) {
+          setLogo(profileData.company.logo)
+          localStorage.setItem("company_logo", profileData.company.logo)
+        }
       }
     }
   }, [profileData, pakTopCompanies])
@@ -167,6 +309,7 @@ function RecruiterOnboardingPage() {
           headers: {
             "Content-Type": "application/json",
             "x-user-id": userId,
+            "Authorization": `Bearer ${localStorage.getItem("access_token")}`
           },
           body: JSON.stringify({
             company_name: companyName,
@@ -176,12 +319,14 @@ function RecruiterOnboardingPage() {
             workplace_type: workplaceType,
             full_name: fullName,
             role_title: role,
+            logo: logo,
           }),
         })
         if (!res.ok) {
           throw new Error("Failed to save company profile.")
         }
         toast.success("Company profile saved successfully!")
+        if (logo) localStorage.setItem("company_logo", logo)
         setStep(3)
       } catch (error) {
         toast.error(error.message || "Failed to save company details.")
@@ -228,11 +373,13 @@ function RecruiterOnboardingPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-50 h-16 glass border-b border-border flex items-center justify-between px-6 md:px-12 select-none">
-        <div className="flex items-center gap-2.5 font-display text-base font-bold text-slate-900">
-          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-            <Sparkles className="w-4.5 h-4.5" />
-          </div>
-          <span className="font-extrabold text-slate-900 leading-none tracking-tight">Talent Vector</span>
+        <div className="flex items-center gap-4">
+          <Link to="/" className="flex items-center gap-2.5 font-display text-base font-bold text-slate-900 focus-visible:outline-none">
+            <div className="w-8 h-8 flex items-center justify-center overflow-hidden shrink-0">
+              <img src="/favicon.svg" alt="Talent Vector" className="w-8 h-8 object-contain" />
+            </div>
+            <span className="font-extrabold text-slate-900 leading-none tracking-tight">Talent Vector</span>
+          </Link>
         </div>
         <div className="text-xs font-black uppercase text-primary border border-primary/20 bg-primary/5 px-3 py-1 rounded-full select-none">
           Recruiter Portal Setup
@@ -240,51 +387,95 @@ function RecruiterOnboardingPage() {
       </header>
 
       {/* Main Form Area */}
-      <main className="relative flex-grow flex items-center justify-center py-12 px-6">
-        <div className="w-full max-w-xl flex flex-col gap-8">
+      <main className="relative flex-grow flex flex-col justify-center py-10 md:py-12 px-4 md:px-8 mx-auto w-full transition-all duration-500 ease-in-out max-w-[96%] md:max-w-[92%] lg:max-w-[88%] xl:max-w-[82%] 2xl:max-w-[76%]">
+        <div className="w-full flex flex-col gap-6 md:gap-8">
           {/* Progress Tracker */}
-          <div className="space-y-3">
-            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <span>Step {step} of 4</span>
-              <span className="text-primary font-bold">{progressPercent}% Completed</span>
+          <div className="space-y-4 bg-white/40 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-6 shadow-sm select-none">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Recruiter Onboarding</span>
+                <h3 className="text-sm md:text-base font-black text-slate-950 uppercase tracking-tight mt-1">
+                  Step {step}: <span className="text-primary">{step === 1 ? "Personal Profile" : step === 2 ? "Company Details" : step === 3 ? "Invite Teammates" : "Ready to Launch"}</span>
+                </h3>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 block">Completion</span>
+                <span className="text-sm font-black text-primary mt-1 block">{progressPercent}%</span>
+              </div>
             </div>
-            <Progress value={progressPercent} className="h-1.5" />
+            
+            <Progress value={progressPercent} className="h-3 bg-slate-100" />
+            
+            <div className="grid grid-cols-4 gap-4 mt-2 text-center text-[10px] font-black uppercase tracking-wider text-slate-500">
+              <div className={cn(
+                "pb-2 border-b-2 transition-all duration-300",
+                step >= 1 ? "text-primary border-primary font-bold" : "border-transparent text-slate-500/30"
+              )}>
+                1. Account
+              </div>
+              <div className={cn(
+                "pb-2 border-b-2 transition-all duration-300",
+                step >= 2 ? "text-primary border-primary font-bold" : "border-transparent text-slate-500/30"
+              )}>
+                2. Company
+              </div>
+              <div className={cn(
+                "pb-2 border-b-2 transition-all duration-300",
+                step >= 3 ? "text-primary border-primary font-bold" : "border-transparent text-slate-500/30"
+              )}>
+                3. Invites
+              </div>
+              <div className={cn(
+                "pb-2 border-b-2 transition-all duration-300",
+                step >= 4 ? "text-primary border-primary font-bold" : "border-transparent text-slate-500/30"
+              )}>
+                4. Launch
+              </div>
+            </div>
           </div>
 
-          {/* Form Card */}
-          <Card className="shadow-xl p-8 bg-white border border-border">
-            <CardContent className="p-0">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start w-full">
+            <div className="lg:col-span-12 w-full flex flex-col">
+              {/* Form Card */}
+              <Card className="bg-white border border-border p-6 md:p-8 shadow-md rounded-2xl w-full flex flex-col h-auto">
+                <CardContent className="p-0 flex flex-col">
+                  <div className={cn(
+                    "w-full transition-all duration-300 flex flex-col justify-start",
+                    step === 3 ? "max-w-5xl mx-auto" : "max-w-4xl mx-auto"
+                  )}>
               
               {/* STEP 1: Account info */}
               {step === 1 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Personal Profile</h2>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">Introduce yourself to start building your recruiting workspace.</p>
+                    <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">Personal Profile</h2>
+                    <p className="text-xs text-slate-600 mt-1 font-medium">Introduce yourself to start building your recruiting workspace.</p>
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Full Name</label>
-                      <OnboardingInput 
-                        placeholder="Alex Mercer"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Work Email</label>
-                      <OnboardingInput 
-                        type="email"
-                        placeholder="alex@company.com"
-                        value={workEmail}
-                        onChange={(e) => setWorkEmail(e.target.value)}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Full Name</label>
+                        <OnboardingInput 
+                          placeholder="Alex Mercer"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                        />
+                      </div>
+                      
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Work Email</label>
+                        <OnboardingInput 
+                          type="email"
+                          placeholder="alex@company.com"
+                          value={workEmail}
+                          onChange={(e) => setWorkEmail(e.target.value)}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Your Role / Job Title</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Your Role / Job Title</label>
                       <OnboardingInput 
                         placeholder="Talent Acquisition Lead"
                         value={role}
@@ -299,34 +490,72 @@ function RecruiterOnboardingPage() {
               {step === 2 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Company Details</h2>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">Add information about your company for employer branding.</p>
+                    <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">Company Details</h2>
+                    <p className="text-xs text-slate-600 mt-1 font-medium">Add information about your company for employer branding.</p>
                   </div>
 
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Company Name</label>
-                        <select
-                          value={selectedPakCompany}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            setSelectedPakCompany(val)
-                            if (val !== "Other") {
-                              setCompanyName(val)
-                            } else {
-                              setCompanyName(customCompanyName)
-                            }
-                          }}
-                          className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-primary outline-none text-xs font-bold text-slate-800 bg-white"
-                        >
-                          {pakTopCompanies.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                          ))}
-                        </select>
+                      <div className="space-y-1.5 relative" ref={dropdownRef}>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Company Name</label>
+                        <div className="relative">
+                          <OnboardingInput 
+                            placeholder="e.g. Systems Limited"
+                            value={companyName}
+                            onChange={(e) => {
+                              setCompanyName(e.target.value)
+                              setShowDropdown(true)
+                            }}
+                            onFocus={() => setShowDropdown(true)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowDropdown(prev => !prev)}
+                            className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                          >
+                            <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", showDropdown && "rotate-180")} />
+                          </button>
+                        </div>
+                        
+                        {/* Custom Dropdown list */}
+                        {showDropdown && (
+                          <div className="absolute left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 animate-fadeIn custom-scrollbar">
+                            {filteredCompanies.length > 0 ? (
+                              filteredCompanies.map((c) => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => {
+                                    setCompanyName(c)
+                                    setShowDropdown(false)
+                                    // Auto-fill metadata from seeded companies
+                                    const meta = COMPANY_METADATA[c]
+                                    if (meta) {
+                                      if (meta.website) setWebsite(meta.website)
+                                      if (meta.hq_location) setLocation(meta.hq_location)
+                                      if (meta.workplace_type) setWorkplaceType(meta.workplace_type)
+                                      if (meta.address) setAddress(meta.address)
+                                      if (meta.logo) setLogo(meta.logo)
+                                    }
+                                  }}
+                                  className={cn(
+                                    "w-full text-left px-4 py-2 text-xs font-bold text-slate-800 hover:bg-slate-50 transition-colors focus:outline-none",
+                                    companyName === c && "bg-primary/5 text-primary"
+                                  )}
+                                >
+                                  {c}
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-2.5 text-slate-400 text-xs font-medium italic">
+                                Press Enter to use "{companyName}"
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Website URL</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Website URL</label>
                         <OnboardingInput 
                           placeholder="https://company.co"
                           value={website}
@@ -335,24 +564,9 @@ function RecruiterOnboardingPage() {
                       </div>
                     </div>
 
-                    {selectedPakCompany === "Other" && (
-                      <div className="space-y-1.5 animate-fadeIn">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Enter Custom Company Name</label>
-                        <OnboardingInput 
-                          placeholder="My Software House"
-                          value={customCompanyName}
-                          onChange={(e) => {
-                            const val = e.target.value
-                            setCustomCompanyName(val)
-                            setCompanyName(val)
-                          }}
-                        />
-                      </div>
-                    )}
-
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">HQ Location (City)</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">HQ Location (City)</label>
                         {(() => {
                           const PK_CITIES = ['Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad','Multan','Peshawar','Quetta','Sialkot','Hyderabad'];
                           const isStandard = PK_CITIES.includes(location);
@@ -390,7 +604,7 @@ function RecruiterOnboardingPage() {
                         })()}
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Workplace Type</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Workplace Type</label>
                         <select
                           value={workplaceType}
                           onChange={(e) => setWorkplaceType(e.target.value)}
@@ -404,13 +618,104 @@ function RecruiterOnboardingPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Office Address</label>
+                      <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Office Address</label>
                       <OnboardingTextarea 
                         placeholder="100 Pine Street, Suite 1200"
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
                         rows={2}
                       />
+                    </div>
+
+                    {/* Company Logo Section */}
+                    <div className="space-y-3 pt-2">
+                      <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Company Logo</label>
+                      <div className="flex items-start gap-5">
+                        {/* Logo Preview */}
+                        <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center overflow-hidden shrink-0 transition-all duration-300 hover:border-primary/30">
+                          {logo ? (
+                            <img
+                              src={logo}
+                              alt="Company logo"
+                              className="w-full h-full object-contain p-1.5"
+                              onError={(e) => {
+                                if (logo && !logo.startsWith("data:")) {
+                                  setLogo("")
+                                }
+                              }}
+                            />
+                          ) : (
+                            <Building2 className="w-7 h-7 text-slate-300" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 space-y-2.5">
+                          {/* File Upload Button */}
+                          <input
+                            ref={logoFileRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (!file) return
+                              if (file.size > 2 * 1024 * 1024) {
+                                toast.warning("Logo file must be under 2 MB.")
+                                return
+                              }
+                              const reader = new FileReader()
+                              reader.onload = (ev) => {
+                                setLogo(ev.target.result)
+                                setLogoUrlInput("")
+                                toast.success("Logo uploaded successfully!")
+                              }
+                              reader.readAsDataURL(file)
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => logoFileRef.current?.click()}
+                            className="h-8 text-[9px] font-black uppercase tracking-widest border-slate-200 hover:border-primary hover:bg-primary/5 transition-all rounded-lg"
+                          >
+                            <Upload className="w-3 h-3 mr-1.5" />
+                            Upload Image
+                          </Button>
+
+                          {/* OR paste URL */}
+                          <div className="flex items-center gap-2">
+                            <OnboardingInput
+                              placeholder="Or paste logo URL…"
+                              value={logoUrlInput}
+                              onChange={(e) => setLogoUrlInput(e.target.value)}
+                              onBlur={() => {
+                                if (logoUrlInput.trim()) {
+                                  setLogo(logoUrlInput.trim())
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault()
+                                  if (logoUrlInput.trim()) setLogo(logoUrlInput.trim())
+                                }
+                              }}
+                              className="text-[11px] h-8"
+                            />
+                            {logo && (
+                              <button
+                                type="button"
+                                onClick={() => { setLogo(""); setLogoUrlInput("") }}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <p className="text-[9px] text-slate-400 font-medium">PNG, JPG, or SVG. Max 2 MB. Selecting a known company auto-fills the logo.</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -420,14 +725,14 @@ function RecruiterOnboardingPage() {
               {step === 3 && (
                 <div className="space-y-6 animate-fadeIn">
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Invite Teammates</h2>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">Invite colleagues to review shortlists and collaborate on screenings.</p>
+                    <h2 className="text-xl font-black text-slate-950 uppercase tracking-tight">Invite Teammates</h2>
+                    <p className="text-xs text-slate-600 mt-1 font-medium">Invite colleagues to review shortlists and collaborate on screenings.</p>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
                     {invites.map((email, idx) => (
                       <div key={idx} className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Teammate {idx + 1} Email</label>
+                        <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-700 block">Teammate {idx + 1} Email</label>
                         <OnboardingInput 
                           type="email"
                           placeholder="colleague@company.com"
@@ -442,14 +747,14 @@ function RecruiterOnboardingPage() {
 
               {/* STEP 4: Success Launch */}
               {step === 4 && (
-                <div className="space-y-8 text-center py-6 animate-fadeIn">
+                <div className="space-y-8 text-center py-12 animate-fadeIn flex-grow flex flex-col justify-center items-center w-full">
                   <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/5">
                     <Check className="w-8 h-8 stroke-[3px]" />
                   </div>
                   
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Launch Ready</h2>
-                    <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+                  <div className="space-y-2 max-w-sm mx-auto">
+                    <h2 className="text-2xl font-black text-slate-950 uppercase tracking-tight">Launch Ready</h2>
+                    <p className="text-xs text-slate-600 font-medium">
                       Your hiring pipeline dashboard is ready. You can now define open job roles and start screening resumes.
                     </p>
                   </div>
@@ -459,10 +764,10 @@ function RecruiterOnboardingPage() {
                       toast.success("Welcome to your dashboard!")
                       navigate({ to: "/hr/portal" })
                     }} 
-                    className="w-full h-13"
+                    className="w-full max-w-sm h-12 text-xs uppercase font-bold"
                   >
                     Enter Dashboard
-                    <ArrowRight className="w-4 h-4 ml-1" />
+                    <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
                 </div>
               )}
@@ -474,27 +779,30 @@ function RecruiterOnboardingPage() {
                     variant="outline" 
                     onClick={handleBack}
                     disabled={step === 1 || isSaving}
-                    className="flex-1"
+                    className="flex-1 h-12 text-xs uppercase font-bold"
                   >
                     Back
                   </Button>
                   <Button 
                     onClick={handleNext}
                     disabled={isSaving}
-                    className="flex-grow"
+                    className="flex-grow h-12 text-xs uppercase font-bold"
                   >
                     {isSaving ? "Saving..." : step === 3 ? "Complete Setup" : "Continue"}
                   </Button>
                 </div>
               )}
 
+            </div>
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
+    </div>
+  </main>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+      <footer className="py-6 text-center text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 border-t border-slate-100 bg-white select-none">
         SOC 2 Type II Compliant · EU-US Data Privacy Framework
       </footer>
     </div>

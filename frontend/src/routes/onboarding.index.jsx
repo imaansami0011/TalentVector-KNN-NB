@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 export const Route = createFileRoute("/onboarding/")({
   beforeLoad: () => {
     const role = localStorage.getItem("user_role")
-    if (role === "hr") {
+    if (role === "hr" || role === "recruiter") {
       throw redirect({
         to: "/onboarding/recruiter",
       })

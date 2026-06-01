@@ -23,6 +23,46 @@ function CandidateOnboardingPage() {
   const [cvText, setCvText] = React.useState("")
   const [file, setFile] = React.useState(null)
   const [isProcessing, setIsProcessing] = React.useState(false)
+  const [checkingProfile, setCheckingProfile] = React.useState(true)
+
+  React.useEffect(() => {
+    if (!userEmail) {
+      setCheckingProfile(false)
+      return
+    }
+    
+    // Check if candidate profile already exists in the database
+    fetch(`http://localhost:8000/candidate/profile?email=${encodeURIComponent(userEmail)}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem("access_token")}`
+      }
+    })
+      .then(res => {
+        if (res.ok) {
+          // Profile exists, set onboarded flag and navigate to browse page
+          localStorage.setItem("onboarded", "true")
+          toast.success("Welcome back! Redirecting to jobs...")
+          navigate({ to: "/browse" })
+        } else {
+          setCheckingProfile(false)
+        }
+      })
+      .catch(err => {
+        console.error("Error checking candidate profile:", err)
+        setCheckingProfile(false)
+      })
+  }, [userEmail, navigate])
+
+  if (checkingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background select-none">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-xs text-slate-400 font-black uppercase tracking-widest">Checking status...</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleFileDrop = (e) => {
     e.preventDefault()
@@ -63,6 +103,9 @@ function CandidateOnboardingPage() {
     try {
       const response = await fetch('http://localhost:8000/candidate/extract', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem("access_token")}`
+        },
         body: formData,
       })
 
@@ -96,8 +139,8 @@ function CandidateOnboardingPage() {
       <header className="sticky top-0 z-50 h-16 glass border-b border-border flex items-center justify-between px-6 md:px-12 select-none">
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-2.5 font-display text-base font-bold text-slate-900 focus-visible:outline-none">
-            <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-              <Sparkles className="w-4.5 h-4.5" />
+            <div className="w-8 h-8 flex items-center justify-center overflow-hidden shrink-0">
+              <img src="/favicon.svg" alt="Talent Vector" className="w-8 h-8 object-contain" />
             </div>
             <span className="font-extrabold text-slate-900 leading-none tracking-tight">Talent Vector</span>
           </Link>

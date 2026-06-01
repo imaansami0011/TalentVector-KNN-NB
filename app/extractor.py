@@ -15,20 +15,68 @@ if os.path.exists(SKILLS_FILE):
     with open(SKILLS_FILE, "r") as f:
         skills_data = json.load(f)
 
+def levenshtein(s1, s2):
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    
+    return previous_row[-1]
+
 def manual_extract_categorized_skills(text):
     """
-    Manual Extraction Engine: Scans text using word-boundary Regex.
+    Manual Extraction Engine: Scans text using word-boundary Regex and Levenshtein fuzzy matching.
     Replaces spaCy PhraseMatcher for extreme speed and control.
     """
     categorized = {}
     all_skills = set()
     clean_text = text.lower()
     
+    # Extract unique alphanumeric/punctuation words to run fuzzy distance checks on
+    tokens = list(set(re.findall(r'\b[a-zA-Z0-9#+.-]+\b', clean_text)))
+    
     for category, skills in skills_data.items():
         for skill in skills:
-            # \b ensures we match "Java" but not "Javascript"
-            pattern = rf'\b{re.escape(skill.lower())}\b'
+            skill_lower = skill.lower()
+            matched = False
+            
+            # 1. Fast Path: Word-boundary exact match
+            pattern = rf'\b{re.escape(skill_lower)}\b'
             if re.search(pattern, clean_text):
+                matched = True
+            else:
+                # 2. Fuzzy Path: Evaluate token edit distance or suffix variations
+                len_s = len(skill_lower)
+                if len_s >= 3: # Ignore short terms to prevent high false-positive rates
+                    clean_skill = skill_lower.replace(".", "").replace("-", "").replace(" ", "")
+                    for token in tokens:
+                        clean_token = token.replace(".", "").replace("-", "").replace(" ", "")
+                        
+                        # Check direct punctuation-insensitive or JS suffix match (e.g. reactjs -> react)
+                        if clean_token == clean_skill or clean_token == clean_skill + "js" or clean_skill == clean_token + "js":
+                            matched = True
+                            break
+                        
+                        # Apply Levenshtein distance check with first-character alignment constraint
+                        if token[0] == skill_lower[0]:
+                            if abs(len(token) - len_s) > 2:
+                                continue
+                            max_distance = 1 if len_s < 8 else 2
+                            if levenshtein(token, skill_lower) <= max_distance:
+                                matched = True
+                                break
+            
+            if matched:
                 if category not in categorized:
                     categorized[category] = set()
                 categorized[category].add(skill.title())

@@ -1,8 +1,10 @@
 import os
+import re
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Header, Depends
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Header, Depends, BackgroundTasks
 from pydantic import BaseModel
+from .auth import get_current_user, get_current_recruiter
 from .database import (
     companies_collection, 
     job_descriptions_collection, 
@@ -10,8 +12,6 @@ from .database import (
     screenings_collection
 )
 from .extractor import extract_entities, detect_domain
-from .ranker import rank_resumes
-from .mailer import send_interview_invitations
 from datetime import datetime, timezone
 import shutil
 
@@ -26,6 +26,7 @@ class CompanyProfile(BaseModel):
     workplace_type: Optional[str] = None
     full_name: Optional[str] = None
     role_title: Optional[str] = None
+    logo: Optional[str] = None
 
 class RecruiterProfileUpdate(BaseModel):
     full_name: str
@@ -36,6 +37,7 @@ class RecruiterProfileUpdate(BaseModel):
     hq_location: Optional[str] = None
     workplace_type: Optional[str] = None
     address: Optional[str] = None
+    logo: Optional[str] = None
 
 class JobDescriptionUpdate(BaseModel):
     id: Optional[str] = None
@@ -47,6 +49,8 @@ class JobDescriptionUpdate(BaseModel):
     mode: str  # Remote/Onsite (Standardizing)
     company_details: Optional[dict] = None # Added for Step 2
     sector: Optional[str] = None # Sector/domain of the position
+    is_hidden: Optional[bool] = False
+    auto_invite_count: Optional[int] = 0
 
 
 # Helper to search user by _id or email
@@ -70,7 +74,8 @@ def save_upload_file(upload_file: UploadFile, directory: str) -> str:
 # --- STEP 1: Onboarding ---
 
 @router.get("/check-onboarding")
-async def check_onboarding(x_user_id: str = Header(...)):
+async def check_onboarding(current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     company = await companies_collection.find_one({"owner_id": x_user_id})
     if company:
         company["id"] = str(company["_id"])
@@ -78,7 +83,8 @@ async def check_onboarding(x_user_id: str = Header(...)):
     return {"onboarded": company is not None, "company": company if company else None}
 
 @router.post("/company")
-async def save_company_profile(profile: CompanyProfile, x_user_id: str = Header(...)):
+async def save_company_profile(profile: CompanyProfile, current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     doc = profile.dict()
     doc["owner_id"] = x_user_id
     doc["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -108,7 +114,8 @@ async def save_company_profile(profile: CompanyProfile, x_user_id: str = Header(
     return {"message": "Company profile saved successfully"}
 
 @router.get("/profile")
-async def get_recruiter_profile(x_user_id: str = Header(...)):
+async def get_recruiter_profile(current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     from .database import users_collection
     user = await users_collection.find_one(get_user_query(x_user_id))
     if not user:
@@ -127,11 +134,13 @@ async def get_recruiter_profile(x_user_id: str = Header(...)):
             "address": company.get("address", "") if company else "",
             "hq_location": company.get("hq_location", "") if company else "",
             "workplace_type": company.get("workplace_type", "Remote") if company else "Remote",
+            "logo": company.get("logo", "") if company else "",
         }
     }
 
 @router.post("/profile")
-async def update_recruiter_profile(profile: RecruiterProfileUpdate, x_user_id: str = Header(...)):
+async def update_recruiter_profile(profile: RecruiterProfileUpdate, current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     from .database import users_collection
     await users_collection.update_one(
         get_user_query(x_user_id),
@@ -150,6 +159,7 @@ async def update_recruiter_profile(profile: RecruiterProfileUpdate, x_user_id: s
             "hq_location": profile.hq_location,
             "workplace_type": profile.workplace_type,
             "address": profile.address,
+            "logo": profile.logo,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }},
         upsert=True
@@ -161,8 +171,9 @@ async def update_recruiter_profile(profile: RecruiterProfileUpdate, x_user_id: s
 @router.post("/jd/extract")
 async def extract_jd_metadata(
     jd_file: UploadFile = File(...),
-    x_user_id: str = Header(...)
+    current_user: dict = Depends(get_current_recruiter)
 ):
+    x_user_id = str(current_user["_id"])
     from .main import extract_text_from_file
     
     # Check if recruiter is onboarded
@@ -191,8 +202,45 @@ async def extract_jd_metadata(
         "original_text": text
     }
 
+async def send_campaign_invitations(
+    matches: list,
+    auto_invite_count: int,
+    job_title: str,
+    company_details: dict,
+    recruiter_name: str,
+    recruiter_role: str
+):
+    from .mailer import send_candidate_invite_email
+    from .database import candidate_profiles_collection
+    from bson import ObjectId
+    
+    top_n = matches[:auto_invite_count]
+    for m in top_n:
+        try:
+            import anyio
+            await anyio.to_thread.run_sync(
+                send_candidate_invite_email,
+                m.get("email"),
+                m.get("name", "Candidate"),
+                job_title,
+                company_details,
+                recruiter_name,
+                recruiter_role
+            )
+            await candidate_profiles_collection.update_one(
+                {"_id": ObjectId(m["id"])},
+                {"$set": {"status": "shortlisted"}}
+            )
+        except Exception as e:
+            print(f"Error dispatching background invitation to {m.get('email')}: {e}")
+
 @router.post("/jd/save")
-async def save_finalized_jd(jd: JobDescriptionUpdate, x_user_id: str = Header(...)):
+async def save_finalized_jd(
+    jd: JobDescriptionUpdate, 
+    background_tasks: BackgroundTasks, 
+    current_user: dict = Depends(get_current_recruiter)
+):
+    x_user_id = str(current_user["_id"])
     # Fetch company details to attach
     company = await companies_collection.find_one({"owner_id": x_user_id})
     if company:
@@ -200,12 +248,157 @@ async def save_finalized_jd(jd: JobDescriptionUpdate, x_user_id: str = Header(..
         del company["_id"]
     
     doc = jd.dict()
+    auto_invite_count = doc.pop("auto_invite_count", 0) or 0
     doc["owner_id"] = x_user_id
     doc["company_details"] = company
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    doc["is_hidden"] = jd.is_hidden or False
     
     result = await job_descriptions_collection.insert_one(doc)
-    return {"message": "Job Description saved", "id": str(result.inserted_id)}
+    jd_id = str(result.inserted_id)
+
+    # Automatically rank candidates and perform initial screening session
+    query = {
+        "$or": [
+            {"visibility": "public"},
+            {"owner_id": x_user_id}
+        ]
+    }
+    sector = doc.get("sector")
+    if sector:
+        escaped_sector = re.escape(sector)
+        query = {
+            "$and": [
+                {"$or": [{"visibility": "public"}, {"owner_id": x_user_id}]},
+                {"$or": [
+                    {"sector": {"$regex": f"^{escaped_sector}$", "$options": "i"}},
+                    {"domain": {"$regex": f"^{escaped_sector}$", "$options": "i"}}
+                ]}
+            ]
+        }
+    cursor = candidate_profiles_collection.find(query)
+    db_candidates = await cursor.to_list(length=100)
+    
+    if not db_candidates:
+        cursor = candidate_profiles_collection.find({"visibility": "public"})
+        db_candidates = await cursor.to_list(length=100)
+        
+    from .ranker import manual_ranker
+    target_skills = doc.get("core_skills", [])
+    required_exp = doc.get("min_experience", 3)
+    
+    matches = []
+    for c in db_candidates:
+        cand_skills = c.get("skills", c.get("skills_extracted", []))
+        skill_score = manual_ranker(target_skills, cand_skills) * 100
+        
+        actual_exp = c.get("total_experience", c.get("experience_years", c.get("experience", 0)))
+        exp_score = 100 if actual_exp >= required_exp else (actual_exp / required_exp) * 100
+        
+        final_weighted_score = (skill_score * 0.7) + (exp_score * 0.3)
+        score = round(final_weighted_score)
+        
+        if score > 45:
+            matches.append({
+                "id": str(c["_id"]),
+                "name": c.get("name", "Unknown Candidate"),
+                "email": c.get("email", ""),
+                "phone": c.get("phone", ""),
+                "title": c.get("title", "Candidate Profile"),
+                "skills_extracted": cand_skills,
+                "experience_years": actual_exp,
+                "match_score_percentage": score,
+                "cv_file_path": c.get("original_cv_path", "").replace("\\", "/") if c.get("original_cv_path") else "",
+                "status": c.get("status", "new"),
+                "experiences": c.get("experiences", []),
+                "education": c.get("education", [])
+            })
+            
+    matches.sort(key=lambda x: x.get("match_score_percentage", 0), reverse=True)
+    
+    # Process auto invitations in the background if requested
+    if auto_invite_count > 0 and matches:
+        company_details = company if company else {}
+        from .database import users_collection
+        user = await users_collection.find_one(get_user_query(x_user_id))
+        recruiter_name = user.get("name", "Hiring Team") if user else "Hiring Team"
+        recruiter_role = user.get("role_title", "Recruiter") if user else "Recruiter"
+        
+        background_tasks.add_task(
+            send_campaign_invitations,
+            matches,
+            auto_invite_count,
+            doc.get("title", "the role"),
+            company_details,
+            recruiter_name,
+            recruiter_role
+        )
+        
+        for m in matches[:auto_invite_count]:
+            m["status"] = "shortlisted"
+            
+    # Save the screening session to DB
+    screening_doc = {
+        "recruiter_id": x_user_id,
+        "owner_id": x_user_id,
+        "jd_id": jd_id,
+        "mode": "global",
+        "candidates": matches,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await screenings_collection.insert_one(screening_doc)
+    
+    return {"message": "Job Description saved", "id": jd_id}
+
+@router.put("/jd/{jd_id}")
+async def update_finalized_jd(jd_id: str, jd: JobDescriptionUpdate, current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
+    from bson import ObjectId
+    try:
+        obj_id = ObjectId(jd_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+        
+    existing = await job_descriptions_collection.find_one({"_id": obj_id, "owner_id": x_user_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Job description not found or unauthorized")
+        
+    doc = jd.dict()
+    update_doc = {
+        "title": doc["title"],
+        "min_experience": doc["min_experience"],
+        "location_type": doc["location_type"],
+        "core_skills": doc["core_skills"],
+        "company_email": doc["company_email"],
+        "mode": doc["location_type"],
+        "sector": doc.get("sector") or existing.get("sector") or "General",
+        "is_hidden": doc.get("is_hidden") if doc.get("is_hidden") is not None else existing.get("is_hidden", False),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await job_descriptions_collection.update_one(
+        {"_id": obj_id, "owner_id": x_user_id},
+        {"$set": update_doc}
+    )
+    return {"message": "Job Description updated successfully"}
+
+@router.post("/jd/{jd_id}/visibility")
+async def toggle_jd_visibility(jd_id: str, is_hidden: bool, current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
+    from bson import ObjectId
+    try:
+        obj_id = ObjectId(jd_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid job ID format")
+        
+    result = await job_descriptions_collection.update_one(
+        {"_id": obj_id, "owner_id": x_user_id},
+        {"$set": {"is_hidden": is_hidden}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Job description not found or unauthorized")
+        
+    return {"message": f"Job visibility updated to {'hidden' if is_hidden else 'visible'}", "is_hidden": is_hidden}
 
 # --- STEP 3: Track 1 – Private Bulk Upload ---
 
@@ -213,8 +406,9 @@ async def save_finalized_jd(jd: JobDescriptionUpdate, x_user_id: str = Header(..
 async def screen_bulk_private(
     jd_id: str = Form(...),
     files: List[UploadFile] = File(...),
-    x_user_id: str = Header(...)
+    current_user: dict = Depends(get_current_recruiter)
 ):
+    x_user_id = str(current_user["_id"])
     from .main import extract_text_from_file
     from bson import ObjectId
     
@@ -286,6 +480,7 @@ async def screen_bulk_private(
         
     # Sort and take top matches descending
     processed_candidates.sort(key=lambda x: x['match_score_percentage'], reverse=True)
+    processed_candidates = [c for c in processed_candidates if c.get("match_score_percentage", 0) > 45]
     
     # Save ranked results to a screening session
     screening_doc = {
@@ -305,17 +500,18 @@ async def screen_bulk_private(
 async def screen_private_batch(
     jd_id: str = Form(...),
     files: List[UploadFile] = File(...),
-    x_user_id: str = Header(...)
+    current_user: dict = Depends(get_current_recruiter)
 ):
-    return await screen_bulk_private(jd_id=jd_id, files=files, x_user_id=x_user_id)
+    return await screen_bulk_private(jd_id=jd_id, files=files, current_user=current_user)
 
 # --- STEP 4: Track 2 – Global Search ---
 
 @router.get("/screen/global")
 async def search_global_candidates(
     jd_id: str,
-    x_user_id: str = Header(...)
+    current_user: dict = Depends(get_current_recruiter)
 ):
+    x_user_id = str(current_user["_id"])
     from bson import ObjectId
     try:
         obj_id = ObjectId(jd_id)
@@ -340,11 +536,12 @@ async def search_global_candidates(
     
     # Query database for candidates matching visibility == "public" and sector == {active_jd_sector}
     # Match sector or domain fields case-insensitively
+    escaped_sector = re.escape(active_jd_sector)
     query = {
         "visibility": "public",
         "$or": [
-            {"sector": {"$regex": f"^{active_jd_sector}$", "$options": "i"}},
-            {"domain": {"$regex": f"^{active_jd_sector}$", "$options": "i"}}
+            {"sector": {"$regex": f"^{escaped_sector}$", "$options": "i"}},
+            {"domain": {"$regex": f"^{escaped_sector}$", "$options": "i"}}
         ]
     }
     
@@ -384,6 +581,7 @@ async def search_global_candidates(
         })
         
     candidate_list.sort(key=lambda x: x['match_score_percentage'], reverse=True)
+    candidate_list = [c for c in candidate_list if c.get("match_score_percentage", 0) > 45]
     
     # Save the screening session to DB
     screening_doc = {
@@ -407,8 +605,9 @@ class InviteRequest(BaseModel):
 async def invite_candidate_by_id(
     candidate_id: str,
     payload: InviteRequest,
-    x_user_id: str = Header(...)
+    current_user: dict = Depends(get_current_recruiter)
 ):
+    x_user_id = str(current_user["_id"])
     from bson import ObjectId
     try:
         cand_obj_id = ObjectId(candidate_id)
@@ -437,13 +636,15 @@ async def invite_candidate_by_id(
     recruiter_role = user.get("role_title", "Recruiter") if user else "Recruiter"
     
     from .mailer import send_candidate_invite_email
-    email_sent = send_candidate_invite_email(
-        candidate_email=candidate.get("email"),
-        candidate_name=candidate.get("name", "Candidate"),
-        job_title=jd.get("title", "the role"),
-        company_details=company_details,
-        recruiter_name=recruiter_name,
-        recruiter_role=recruiter_role
+    import anyio
+    email_sent = await anyio.to_thread.run_sync(
+        send_candidate_invite_email,
+        candidate.get("email"),
+        candidate.get("name", "Candidate"),
+        jd.get("title", "the role"),
+        company_details,
+        recruiter_name,
+        recruiter_role
     )
     
     await candidate_profiles_collection.update_one(
@@ -453,39 +654,14 @@ async def invite_candidate_by_id(
     
     return {"message": f"Branded invitation sent to {candidate.get('email')}", "status": "shortlisted"}
 
-@router.post("/candidates/invite")
-async def invite_candidate(
-    candidate_email: str,
-    jd_id: str,
-    x_user_id: str = Header(...)
-):
-    from bson import ObjectId
-    jd = await job_descriptions_collection.find_one({"_id": ObjectId(jd_id), "owner_id": x_user_id})
-    if not jd:
-        raise HTTPException(status_code=404, detail="Job Description not found")
-        
-    company_email = jd.get("company_email")
-    company_name = jd.get("company_details", {}).get("company_name", "Our Company")
-    
-    try:
-        from .mailer import send_interview_invitations
-        print(f"EMAILING: {candidate_email} from {company_email} for JD: {jd['title']}")
-        # Update status in db if candidate exists
-        await candidate_profiles_collection.update_one(
-            {"email": candidate_email},
-            {"$set": {"status": "shortlisted"}}
-        )
-        return {"message": f"Invitation sent to {candidate_email} via {company_email}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Mail failed: {str(e)}")
-
 # --- Additional Recruiter Endpoints for UI ---
 
 class StatusUpdate(BaseModel):
     status: str
 
 @router.get("/jds")
-async def get_jds(x_user_id: str = Header(...)):
+async def get_jds(current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     cursor = job_descriptions_collection.find({"owner_id": x_user_id})
     jds = await cursor.to_list(length=100)
     for jd in jds:
@@ -498,8 +674,10 @@ async def get_candidates(
     q: Optional[str] = None,
     domain: Optional[str] = None,
     status: Optional[str] = None,
-    x_user_id: str = Header(...)
+    jd_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_recruiter)
 ):
+    x_user_id = str(current_user["_id"])
     query = {
         "$or": [
             {"visibility": "public"},
@@ -523,9 +701,15 @@ async def get_candidates(
         }
         
     if domain and domain != "All" and domain != "Any":
+        escaped_domain = re.escape(domain)
         if "$and" not in query:
             query = {"$and": [query]}
-        query["$and"].append({"domain": {"$regex": f"^{domain}$", "$options": "i"}})
+        query["$and"].append({
+            "$or": [
+                {"domain": {"$regex": f"^{escaped_domain}$", "$options": "i"}},
+                {"sector": {"$regex": f"^{escaped_domain}$", "$options": "i"}}
+            ]
+        })
         
     if status and status != "Any" and status != "All":
         if "$and" not in query:
@@ -534,13 +718,80 @@ async def get_candidates(
 
     cursor = candidate_profiles_collection.find(query)
     candidates = await cursor.to_list(length=100)
+    
+    target_jd = None
+    if jd_id:
+        from bson import ObjectId
+        try:
+            target_jd = await job_descriptions_collection.find_one({"_id": ObjectId(jd_id), "owner_id": x_user_id})
+        except Exception:
+            pass
+
     for c in candidates:
         c["id"] = str(c["_id"])
         del c["_id"]
+        
+        if target_jd:
+            from .ranker import manual_ranker
+            target_skills = target_jd.get("core_skills", [])
+            required_exp = target_jd.get("min_experience", 3)
+            
+            cand_skills = c.get("skills", c.get("skills_extracted", []))
+            skill_score = manual_ranker(target_skills, cand_skills) * 100
+            
+            actual_exp = c.get("total_experience", c.get("experience_years", c.get("experience", 0)))
+            exp_score = 100 if actual_exp >= required_exp else (actual_exp / required_exp) * 100
+            
+            final_weighted_score = (skill_score * 0.7) + (exp_score * 0.3)
+            c["score"] = round(final_weighted_score)
+        else:
+            # Clean static scores if no job context is present
+            if "score" in c:
+                del c["score"]
+            if "match_score_percentage" in c:
+                del c["match_score_percentage"]
+                
+    if target_jd:
+        # Sort by dynamic match score descending
+        candidates.sort(key=lambda x: x.get("score", 0), reverse=True)
+        candidates = [c for c in candidates if c.get("score", 0) > 45]
+        
     return candidates
 
+@router.get("/candidates/filters")
+async def get_candidate_filters(current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
+    """Return distinct domains, statuses, and total count for filter UI."""
+    query = {
+        "$or": [
+            {"visibility": "public"},
+            {"owner_id": x_user_id}
+        ]
+    }
+    
+    domains_1 = await candidate_profiles_collection.distinct("domain", query)
+    domains_2 = await candidate_profiles_collection.distinct("sector", query)
+    domains = list(set(domains_1 + domains_2))
+    statuses = await candidate_profiles_collection.distinct("status", query)
+    total = await candidate_profiles_collection.count_documents(query)
+    
+    # Clean up None/empty values
+    domains = sorted([d for d in domains if d and d.strip()])
+    statuses = sorted([s for s in statuses if s and s.strip()])
+    
+    return {
+        "domains": domains,
+        "statuses": statuses,
+        "total": total
+    }
+
 @router.get("/candidates/{candidate_id}")
-async def get_candidate_details(candidate_id: str, x_user_id: str = Header(...)):
+async def get_candidate_details(
+    candidate_id: str,
+    jd_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_recruiter)
+):
+    x_user_id = str(current_user["_id"])
     from bson import ObjectId
     try:
         obj_id = ObjectId(candidate_id)
@@ -553,14 +804,58 @@ async def get_candidate_details(candidate_id: str, x_user_id: str = Header(...))
         
     candidate["id"] = str(candidate["_id"])
     del candidate["_id"]
+    
+    # Dynamic match evaluation if jd_id is provided
+    target_jd = None
+    if jd_id:
+        try:
+            target_jd = await job_descriptions_collection.find_one({"_id": ObjectId(jd_id), "owner_id": x_user_id})
+        except Exception:
+            pass
+            
+    if target_jd:
+        from .ranker import manual_ranker
+        target_skills = target_jd.get("core_skills", [])
+        required_exp = target_jd.get("min_experience", 3)
+        
+        cand_skills = candidate.get("skills", candidate.get("skills_extracted", []))
+        skill_score = manual_ranker(target_skills, cand_skills) * 100
+        
+        actual_exp = candidate.get("total_experience", candidate.get("experience_years", candidate.get("experience", 0)))
+        exp_score = 100 if actual_exp >= required_exp else (actual_exp / required_exp) * 100
+        
+        final_weighted_score = (skill_score * 0.7) + (exp_score * 0.3)
+        
+        # Inject metrics
+        candidate["score"] = round(final_weighted_score)
+        candidate["skillMatch"] = round(skill_score)
+        candidate["expMatch"] = round(exp_score)
+        
+        # Calculate matched vs missing skills
+        target_skills_lower = [ts.lower() for ts in target_skills]
+        cand_skills_lower = [cs.lower() for cs in cand_skills]
+        
+        matched_skills = [ts for ts in target_skills if ts.lower() in cand_skills_lower]
+        missing_skills = [ts for ts in target_skills if ts.lower() not in cand_skills_lower]
+        
+        candidate["matchedSkills"] = matched_skills
+        candidate["missingSkills"] = missing_skills
+    else:
+        # Clean static scores
+        if "score" in candidate:
+            del candidate["score"]
+        if "match_score_percentage" in candidate:
+            del candidate["match_score_percentage"]
+            
     return candidate
 
 @router.post("/candidates/{candidate_id}/status")
 async def update_candidate_status(
     candidate_id: str,
     status_update: StatusUpdate,
-    x_user_id: str = Header(...)
+    current_user: dict = Depends(get_current_recruiter)
 ):
+    x_user_id = str(current_user["_id"])
     from bson import ObjectId
     try:
         obj_id = ObjectId(candidate_id)
@@ -577,7 +872,8 @@ async def update_candidate_status(
     return {"message": "Status updated successfully", "status": status_update.status}
 
 @router.get("/stats")
-async def get_recruiter_stats(x_user_id: str = Header(...)):
+async def get_recruiter_stats(current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     active_jobs = await job_descriptions_collection.count_documents({"owner_id": x_user_id})
     
     screenings_cursor = screenings_collection.find({
@@ -630,7 +926,8 @@ async def get_recruiter_stats(x_user_id: str = Header(...)):
     }
 
 @router.get("/screenings")
-async def get_screenings(x_user_id: str = Header(...)):
+async def get_screenings(current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     cursor = screenings_collection.find({
         "$or": [
             {"recruiter_id": x_user_id},
@@ -644,7 +941,8 @@ async def get_screenings(x_user_id: str = Header(...)):
     return screenings
 
 @router.get("/jobs/{job_id}/results")
-async def get_job_results(job_id: str, x_user_id: str = Header(...)):
+async def get_job_results(job_id: str, current_user: dict = Depends(get_current_recruiter)):
+    x_user_id = str(current_user["_id"])
     from bson import ObjectId
     try:
         obj_id = ObjectId(job_id)
@@ -667,6 +965,48 @@ async def get_job_results(job_id: str, x_user_id: str = Header(...)):
         candidates = screening.get("candidates", [])
         mode = screening.get("mode", "global")
         
+    if not candidates:
+        mode = "global"
+        query = {
+            "$or": [
+                {"visibility": "public"},
+                {"owner_id": x_user_id}
+            ]
+        }
+        cursor = candidate_profiles_collection.find(query)
+        db_candidates = await cursor.to_list(length=100)
+        
+        from .ranker import manual_ranker
+        target_skills = jd.get("core_skills", [])
+        required_exp = jd.get("min_experience", 3)
+        
+        for c in db_candidates:
+            cand_skills = c.get("skills", c.get("skills_extracted", []))
+            skill_score = manual_ranker(target_skills, cand_skills) * 100
+            
+            actual_exp = c.get("total_experience", c.get("experience_years", c.get("experience", 0)))
+            exp_score = 100 if actual_exp >= required_exp else (actual_exp / required_exp) * 100
+            
+            final_weighted_score = (skill_score * 0.7) + (exp_score * 0.3)
+            
+            candidates.append({
+                "id": str(c["_id"]),
+                "name": c.get("name", "Unknown Candidate"),
+                "email": c.get("email", ""),
+                "phone": c.get("phone", ""),
+                "title": c.get("title", "Candidate Profile"),
+                "skills_extracted": cand_skills,
+                "experience_years": actual_exp,
+                "match_score_percentage": round(final_weighted_score),
+                "cv_file_path": c.get("original_cv_path", "").replace("\\", "/") if c.get("original_cv_path") else "",
+                "status": c.get("status", "new"),
+                "experiences": c.get("experiences", []),
+                "education": c.get("education", [])
+            })
+            
+        candidates.sort(key=lambda x: x.get("match_score_percentage", 0), reverse=True)
+        
+    candidates = [c for c in candidates if c.get("match_score_percentage", 0) > 45]
     return {
         "job": {
             "id": str(jd["_id"]),

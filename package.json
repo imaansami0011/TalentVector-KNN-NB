@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "backend": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
-    "frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently --kill-others \"npm run backend\" \"npm run frontend\"",
+    "frontend": "npm.cmd run dev --prefix frontend",
+    "dev": "concurrently --kill-others \"npm.cmd run backend\" \"npm.cmd run frontend\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

@@ -2,12 +2,12 @@ import os
 import shutil
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Header, Depends
 from pydantic import BaseModel
+from .auth import get_current_user, get_current_candidate
 from .database import candidate_profiles_collection, job_descriptions_collection
 from .extractor import extract_entities
 from .models.classifier import predict_sector_nb
-from .ranker import rank_resumes
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/candidate", tags=["candidate"])
@@ -34,7 +34,8 @@ def save_upload_file(upload_file: UploadFile, directory: str) -> str:
 @router.post("/extract")
 async def extract_cv(
     cv_text: Optional[str] = Form(None),
-    cv_file: Optional[UploadFile] = File(None)
+    cv_file: Optional[UploadFile] = File(None),
+    current_user: dict = Depends(get_current_user)
 ):
     from .main import extract_text_from_file  # Import here to avoid circular dep for now
     
@@ -57,6 +58,25 @@ async def extract_cv(
     sector = nb_res["mapped_sector"]
     raw_category = nb_res["raw_category"]
     
+    # Construct profile document to save in the database directly
+    profile_doc = {
+        "name": current_user.get("name") or entities.get("Name") or "Candidate",
+        "email": current_user.get("email"),
+        "phone": entities.get("Phone", "") if entities.get("Phone") != "Not Found" else "",
+        "sector": sector,
+        "raw_category": raw_category,
+        "total_experience": float(entities.get("Years_of_Experience", 0)),
+        "skills": entities.get("Skills", []),
+        "original_cv_path": saved_path,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await candidate_profiles_collection.update_one(
+        {"email": current_user.get("email")},
+        {"$set": profile_doc},
+        upsert=True
+    )
+    
     return {
         "detected_name": entities.get("Name", ""),
         "detected_experience": float(entities.get("Years_of_Experience", 0)),
@@ -70,7 +90,7 @@ async def extract_cv(
     }
 
 @router.get("/profile")
-async def get_profile(email: str):
+async def get_profile(email: str, current_user: dict = Depends(get_current_user)):
     profile = await candidate_profiles_collection.find_one({"email": email})
     
     if not profile:
@@ -88,11 +108,17 @@ async def get_profile(email: str):
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
         
+    # Recruiters can view profiles, candidates can only view their own
+    if current_user.get("role") != "recruiter" and current_user.get("email") != profile.get("email"):
+        raise HTTPException(status_code=403, detail="Access forbidden: Cannot view another candidate's profile")
+
     profile["_id"] = str(profile["_id"])
     return profile
 
 @router.post("/profile")
-async def save_profile(profile: CandidateProfile):
+async def save_profile(profile: CandidateProfile, current_user: dict = Depends(get_current_candidate)):
+    if current_user.get("email") != profile.email:
+        raise HTTPException(status_code=403, detail="Access forbidden: Cannot update another candidate's profile")
     # Save the profile
     doc = profile.dict()
     doc["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -100,6 +126,13 @@ async def save_profile(profile: CandidateProfile):
         {"email": profile.email},
         {"$set": doc},
         upsert=True
+    )
+    
+    # Update user status to onboarded in users_collection
+    from .database import users_collection
+    await users_collection.update_one(
+        {"email": profile.email, "role": "candidate"},
+        {"$set": {"status": "onboarded"}}
     )
     
     # Re-ranking logic (Find top 3 JDs)
@@ -117,14 +150,20 @@ async def save_profile(profile: CandidateProfile):
     }
     
     for jd in jds:
-        # We reuse manual_ranker
         from .ranker import manual_ranker
-        from .extractor import extract_entities
-        jd_skills = extract_entities(jd.get("text", "")).get("Skills", [])
+        
+        # Use pre-extracted core_skills if available; fallback to extracting from text
+        jd_skills = jd.get("core_skills")
+        if not jd_skills:
+            from .extractor import extract_entities
+            jd_text = jd.get("text", "") or ""
+            jd_skills = extract_entities(jd_text).get("Skills", [])
+            
         score = manual_ranker(jd_skills, profile.skills)
         matches.append({"jd_id": str(jd["_id"]), "title": jd.get("title", "Unknown Job"), "score": score})
         
-    # Sort and take top 3
+    # Sort and take top 3 above 45% match
+    matches = [m for m in matches if m["score"] > 0.45]
     matches.sort(key=lambda x: x["score"], reverse=True)
     top_matches = matches[:3]
     
@@ -132,7 +171,7 @@ async def save_profile(profile: CandidateProfile):
 
 @router.get("/jobs")
 async def get_jobs():
-    cursor = job_descriptions_collection.find({})
+    cursor = job_descriptions_collection.find({"is_hidden": {"$ne": True}})
     jds = await cursor.to_list(length=200)
     results = []
     for jd in jds:

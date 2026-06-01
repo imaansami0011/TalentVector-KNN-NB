@@ -1,6 +1,9 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { AppShell } from "../components/app-shell"
+import { AdPanel } from "../components/ad-panel"
+import { SkillsInput } from "../components/skills-input"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
@@ -11,15 +14,12 @@ import {
   Sparkles, 
   Upload, 
   FileText, 
-  Search, 
-  Check, 
-  Loader2, 
-  Briefcase, 
-  Globe, 
-  Lock,
-  Layers,
-  ListPlus,
-  Trash2
+  Loader2,
+  Check,
+  ChevronRight,
+  Mail,
+  Users,
+  X
 } from "lucide-react"
 
 export const Route = createFileRoute("/hr/jobs/new")({
@@ -29,6 +29,9 @@ export const Route = createFileRoute("/hr/jobs/new")({
 function UnifiedJobIngestion() {
   const navigate = useNavigate()
   const userId = localStorage.getItem("user_id")
+
+  // --- Step Tracking ---
+  const [step, setStep] = React.useState("upload") // 'upload' | 'verify'
 
   // --- Left Column: Define the Job States ---
   const [jdText, setJdText] = React.useState("")
@@ -40,25 +43,23 @@ function UnifiedJobIngestion() {
   const [title, setTitle] = React.useState("")
   const [minExperience, setMinExperience] = React.useState(3)
   const [locationType, setLocationType] = React.useState("Remote")
-  const [coreSkills, setCoreSkills] = React.useState("")
+  const [coreSkills, setCoreSkills] = React.useState([])
   const [companyEmail, setCompanyEmail] = React.useState("")
   const [sector, setSector] = React.useState("")
 
   const [isSaving, setIsSaving] = React.useState(false)
-  const [savedJobId, setSavedJobId] = React.useState(null)
-  const [isJdSaved, setIsJdSaved] = React.useState(false)
 
-  // --- Right Column: Candidate Sourcing States ---
-  const [privateFiles, setPrivateFiles] = React.useState([])
-  const [isScreening, setIsScreening] = React.useState(false)
-  const [isGlobalSearching, setIsGlobalSearching] = React.useState(false)
+  // --- Auto-Invite Modal States ---
+  const [showInviteModal, setShowInviteModal] = React.useState(false)
+  const [invitePreset, setInvitePreset] = React.useState(3) // 0 | 3 | 5 | 10 | 'custom'
+  const [customCount, setCustomCount] = React.useState(7)
 
   // JD File Change Handler
   const handleJdFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
       setJdFile(file)
-      toast.success(`Selected file: ${file.name}`)
+      toast.success("Job description uploaded! Now press Parse Job.")
     }
   }
 
@@ -80,6 +81,9 @@ function UnifiedJobIngestion() {
     try {
       const res = await fetch("http://localhost:8000/jd/parse", {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
         body: formData,
       })
 
@@ -89,12 +93,13 @@ function UnifiedJobIngestion() {
       setTitle(data.title || "")
       setMinExperience(data.min_experience || 3)
       setLocationType(data.location_type || "Remote")
-      setCoreSkills(data.core_skills ? data.core_skills.join(", ") : "")
+      setCoreSkills(data.core_skills || [])
       setCompanyEmail(data.company_email || "")
       setSector(data.sector || "General")
-      setOriginalText(data.original_text || "")
+      setOriginalText(data.original_text || jdText || "")
       
-      toast.success("Job Description parsed successfully! Verify details below.")
+      toast.success("Job Description parsed successfully! Correct any mistakes below.")
+      setStep("verify")
     } catch (err) {
       console.error(err)
       toast.error("Failed to parse Job Description. Please verify server connection.")
@@ -103,24 +108,30 @@ function UnifiedJobIngestion() {
     }
   }
 
-  // JD Save Handler
-  const handleSaveJD = async (e) => {
+  // JD Save Handler - Intercepts submission to prompt auto-invite modal
+  const handleSaveJD = (e) => {
     e.preventDefault()
     if (!title.trim()) {
       toast.warning("Please provide a Job Title.")
       return
     }
+    setShowInviteModal(true)
+  }
 
+  // Actual API execution handler
+  const executeSaveJD = async (count) => {
     setIsSaving(true)
     const payload = {
       title: title.trim(),
       min_experience: parseInt(minExperience, 10) || 0,
       location_type: locationType,
-      core_skills: coreSkills.split(",").map(s => s.trim()).filter(Boolean),
-      company_email: companyEmail.trim() || localStorage.getItem("user_id") || "recruiter@example.com",
-      mode: locationType, // Matching backend requirements
+      core_skills: coreSkills,
+      company_email: companyEmail.trim() || localStorage.getItem("user_email") || "recruiter@example.com",
+      mode: locationType, 
       company_details: null,
-      sector: sector || "General"
+      sector: sector || "General",
+      is_hidden: false,
+      auto_invite_count: count
     }
 
     try {
@@ -128,17 +139,17 @@ function UnifiedJobIngestion() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": userId || ""
+          "x-user-id": userId || "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
         },
         body: JSON.stringify(payload)
       })
 
       if (!res.ok) throw new Error("Failed to save Job Description")
 
-      const data = await res.json()
-      setSavedJobId(data.id)
-      setIsJdSaved(true)
-      toast.success("Job Pipeline created! You can now source candidates.")
+      toast.success("Job Pipeline created successfully!")
+      setShowInviteModal(false)
+      navigate({ to: "/hr/jobs" })
     } catch (err) {
       console.error(err)
       toast.error(`Failed to save job pipeline: ${err.message}`)
@@ -147,81 +158,13 @@ function UnifiedJobIngestion() {
     }
   }
 
-  // Candidates Files Upload Handler
-  const handlePrivateFilesChange = (e) => {
-    if (e.target.files) {
-      const selected = Array.from(e.target.files)
-      setPrivateFiles(prev => [...prev, ...selected])
-      toast.success(`Added ${selected.length} resume(s) to pipeline.`)
-    }
-  }
-
-  const removePrivateFile = (index) => {
-    setPrivateFiles(prev => prev.filter((_, i) => i !== index))
-  }
-
-  // Sourcing A: Private CV Screening
-  const handlePrivateSourcing = async () => {
-    if (privateFiles.length === 0) {
-      toast.warning("Please upload at least one resume file.")
-      return
-    }
-
-    setIsScreening(true)
-    const formData = new FormData()
-    formData.append("jd_id", savedJobId)
-    privateFiles.forEach(file => {
-      formData.append("files", file)
-    })
-
-    try {
-      const res = await fetch("http://localhost:8000/screen/bulk", {
-        method: "POST",
-        headers: {
-          "x-user-id": userId || ""
-        },
-        body: formData
-      })
-
-      if (!res.ok) throw new Error("Bulk screening failed")
-
-      const data = await res.json()
-      toast.success(`Screened ${data.candidates?.length || 0} candidates successfully!`)
-      navigate({ to: `/hr/jobs/${savedJobId}/results` })
-    } catch (err) {
-      console.error(err)
-      toast.error(`Screening failed: ${err.message}`)
-    } finally {
-      setIsScreening(false)
-    }
-  }
-
-  // Sourcing B: Global Pool Matching
-  const handleGlobalSourcing = async () => {
-    setIsGlobalSearching(true)
-    try {
-      const res = await fetch(`http://localhost:8000/recruiter/screen/global?jd_id=${savedJobId}`, {
-        headers: {
-          "x-user-id": userId || ""
-        }
-      })
-
-      if (!res.ok) throw new Error("Global matching failed")
-
-      const data = await res.json()
-      toast.success(`Matched ${data.candidates?.length || 0} global candidates!`)
-      navigate({ to: `/hr/jobs/${savedJobId}/results` })
-    } catch (err) {
-      console.error(err)
-      toast.error(`Global pool matching failed: ${err.message}`)
-    } finally {
-      setIsGlobalSearching(false)
-    }
-  }
+  const wrapperClass = step === "verify"
+    ? "p-6 flex flex-col lg:h-[calc(100vh-4rem)] lg:overflow-hidden w-full animate-fadeIn select-none space-y-6"
+    : "p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none"
 
   return (
-    <AppShell>
-      <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto animate-fadeIn select-none">
+    <AppShell rightPanel={<AdPanel />}>
+      <div className={wrapperClass}>
         
         {/* Back Link */}
         <Link 
@@ -239,14 +182,10 @@ function UnifiedJobIngestion() {
           <p className="text-xs text-slate-500 font-medium">Define your requirements and matches will unlock instantly.</p>
         </div>
 
-        {/* 2-Column Grid Workspace */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          
-          {/* LEFT COLUMN: Define & Verify */}
-          <div className="space-y-6">
-            
-            {/* Ingestion interface card */}
-            <Card className={isJdSaved ? "opacity-60 transition-opacity duration-300" : ""}>
+        {/* STEP 1: Upload / Paste Ingestion */}
+        {step === "upload" && (
+          <div className="w-full space-y-6 animate-fadeIn">
+            <Card className="border border-slate-200">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-primary" />
@@ -260,18 +199,23 @@ function UnifiedJobIngestion() {
                 <div className="flex gap-4">
                   <div className="flex-1 space-y-1.5">
                     <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Upload JD File</label>
-                    <div className="relative border border-dashed border-slate-200 rounded-xl hover:bg-slate-50 hover:border-primary/30 transition-all flex flex-col items-center justify-center p-4 text-center gap-2 cursor-pointer bg-white">
+                    <div className="relative border border-dashed border-slate-300 rounded-xl hover:bg-slate-50 hover:border-primary/50 transition-all flex flex-col items-center justify-center py-8 px-6 text-center gap-2.5 cursor-pointer bg-white">
                       <input 
                         type="file" 
                         accept=".pdf,.docx,.doc,.txt"
                         className="absolute inset-0 opacity-0 cursor-pointer"
                         onChange={handleJdFileChange}
-                        disabled={isJdSaved}
                       />
-                      <Upload className="w-5 h-5 text-slate-400" />
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      <Upload className="w-7 h-7 text-primary" />
+                      <span className="text-xs text-slate-700 font-bold uppercase tracking-wider">
                         {jdFile ? jdFile.name : "Select PDF / Word / Text"}
                       </span>
+                      {jdFile && (
+                        <span className="text-[10px] text-emerald-600 font-black uppercase tracking-wider animate-pulse">
+                          uploaded now press parse job
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-400 font-medium">Supports PDF, DOCX, DOC, TXT (Max 10MB)</span>
                     </div>
                   </div>
                 </div>
@@ -287,279 +231,326 @@ function UnifiedJobIngestion() {
                   <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Raw Job Description Text</label>
                   <Textarea 
                     placeholder="Paste job details, core responsibilities, qualifications, and requirements here..."
-                    className="min-h-[140px] text-xs font-medium leading-relaxed resize-none"
+                    className="min-h-[260px] focus:min-h-[420px] text-sm md:text-base font-medium leading-relaxed transition-all duration-300 border-slate-200 p-4"
                     value={jdText}
                     onChange={(e) => setJdText(e.target.value)}
-                    disabled={isJdSaved}
                   />
                 </div>
 
                 {/* Parse Trigger */}
                 <Button 
                   onClick={handleParseJD} 
-                  disabled={isParsing || isJdSaved}
-                  className="w-full h-11 text-xs font-bold bg-secondary hover:bg-secondary/90 text-primary border border-primary/20 shadow-sm"
+                  disabled={isParsing}
+                  className="w-full h-12 text-xs font-black uppercase tracking-widest bg-primary hover:bg-primary/95 text-white shadow-md hover:shadow-lg transition-all rounded-xl mt-3 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {isParsing ? (
                     <>
-                      <Loader2 className="w-4.5 h-4.5 mr-1.5 animate-spin" />
-                      Parsing Requirements...
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Parsing Requirements...</span>
                     </>
                   ) : (
                     <>
-                      <FileText className="w-4.5 h-4.5 mr-1.5" />
-                      Parse Job Description (AI)
+                      <FileText className="w-4 h-4" />
+                      <span>Parse Job Description (AI)</span>
                     </>
                   )}
                 </Button>
 
               </CardContent>
             </Card>
+          </div>
+        )}
 
-            {/* Human-in-the-Loop review form */}
-            {(title || isJdSaved) && (
-              <Card className="animate-fadeIn">
-                <CardHeader className="border-b border-border pb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Verify Requirements</CardTitle>
-                      <CardDescription>Confirm parsed parameters. This information indexes matches.</CardDescription>
-                    </div>
-                    {isJdSaved && (
-                      <Badge variant="new" className="bg-emerald-50 text-emerald-600 border-emerald-200">
-                        <Check className="w-3 h-3 mr-1" />
-                        Saved
-                      </Badge>
-                    )}
+        {/* STEP 2: Side-by-Side Verification */}
+        {step === "verify" && (
+          <div className="grid gap-6 lg:grid-cols-2 items-stretch animate-fadeIn w-full lg:flex-1 lg:min-h-0">
+            
+            {/* Left Column: Form Editor */}
+            <Card className="border border-slate-200 shadow-sm flex flex-col h-full lg:min-h-0">
+              <CardHeader className="border-b border-border pb-4">
+                <CardTitle>Verify Requirements</CardTitle>
+                <CardDescription>Correct any extraction mistakes. These values calculate candidates' match scores.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 flex-1 flex flex-col min-h-0">
+                <form onSubmit={handleSaveJD} className="flex-1 flex flex-col justify-between min-h-0">
+                  <div className="space-y-4 lg:overflow-y-auto lg:pr-1 custom-scrollbar pb-32">
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Job Title</label>
+                    <Input 
+                      value={title} 
+                      onChange={(e) => setTitle(e.target.value)} 
+                      placeholder="e.g. Senior Backend Engineer"
+                      className="text-xs font-bold border-slate-200"
+                    />
                   </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <form onSubmit={handleSaveJD} className="space-y-4">
-                    
+
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Core Skills</label>
+                    <SkillsInput 
+                      value={coreSkills} 
+                      onChange={setCoreSkills} 
+                      placeholder="Type or select skills (e.g. Python, React)..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Job Title</label>
+                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Location Type</label>
+                      <select
+                        value={locationType}
+                        onChange={(e) => setLocationType(e.target.value)}
+                        className="flex h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="Remote">Remote</option>
+                        <option value="Onsite">Onsite</option>
+                        <option value="Hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Min Exp (Years)</label>
                       <Input 
-                        value={title} 
-                        onChange={(e) => setTitle(e.target.value)} 
-                        disabled={isJdSaved}
-                        placeholder="e.g. Senior Backend Engineer"
-                        className="text-xs font-bold"
+                        type="number" 
+                        min={0}
+                        value={minExperience} 
+                        onChange={(e) => setMinExperience(parseInt(e.target.value, 10) || 0)} 
+                        className="text-xs font-medium border-slate-200"
                       />
                     </div>
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Core Skills (comma separated)</label>
+                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Company Email</label>
                       <Input 
-                        value={coreSkills} 
-                        onChange={(e) => setCoreSkills(e.target.value)} 
-                        disabled={isJdSaved}
-                        placeholder="e.g. Python, Django, AWS, SQL"
-                        className="text-xs font-medium"
+                        value={companyEmail} 
+                        onChange={(e) => setCompanyEmail(e.target.value)} 
+                        placeholder="hiring@company.com"
+                        className="text-xs font-medium border-slate-200"
                       />
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Location Type</label>
-                        <select
-                          value={locationType}
-                          onChange={(e) => setLocationType(e.target.value)}
-                          disabled={isJdSaved}
-                          className="flex h-9 w-full rounded-xl border border-border bg-white px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        >
-                          <option value="Remote">Remote</option>
-                          <option value="Onsite">Onsite</option>
-                          <option value="Hybrid">Hybrid</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Min Exp (Years)</label>
-                        <Input 
-                          type="number" 
-                          min={0}
-                          value={minExperience} 
-                          onChange={(e) => setMinExperience(parseInt(e.target.value, 10) || 0)} 
-                          disabled={isJdSaved}
-                          className="text-xs font-medium"
-                        />
-                      </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Sector / Domain</label>
+                      <Input 
+                        value={sector} 
+                        onChange={(e) => setSector(e.target.value)} 
+                        placeholder="e.g. Technology"
+                        className="text-xs font-medium border-slate-200"
+                      />
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Company Email</label>
-                        <Input 
-                          value={companyEmail} 
-                          onChange={(e) => setCompanyEmail(e.target.value)} 
-                          disabled={isJdSaved}
-                          placeholder="hiring@company.com"
-                          className="text-xs font-medium"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Sector / Domain</label>
-                        <Input 
-                          value={sector} 
-                          disabled
-                          placeholder="e.g. Technology"
-                          className="text-xs font-medium bg-slate-50 cursor-not-allowed border-dashed"
-                        />
-                      </div>
-                    </div>
+                  </div>
 
-                    {!isJdSaved && (
-                      <Button type="submit" disabled={isSaving} className="w-full h-12 mt-2 font-bold shadow-md shadow-primary/10">
-                        {isSaving ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                            Saving Position...
-                          </>
-                        ) : (
-                          "Confirm & Create Job Pipeline"
-                        )}
-                      </Button>
-                    )}
-                  </form>
-                </CardContent>
-              </Card>
-            )}
+                  {/* Actions buttons */}
+                  <div className="flex items-center gap-3 pt-6 mt-auto">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setStep("upload")}
+                      className="flex-1 h-11 font-bold text-xs uppercase tracking-wider border-slate-200 rounded-xl"
+                    >
+                      Re-upload / Back
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={isSaving} 
+                      className="flex-1 h-11 font-bold text-xs uppercase tracking-wider shadow-md shadow-primary/10 rounded-xl bg-primary text-white"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Confirm & Save Job"
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
+            {/* Right Column: Original Job Description Text */}
+            <Card className="border border-slate-200 shadow-sm flex flex-col h-full lg:min-h-0">
+              <CardHeader className="pb-3 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-800">Original Job Description</CardTitle>
+                <CardDescription>Parsed text contents for side-by-side verification.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto custom-scrollbar font-sans text-xs text-slate-650 bg-slate-50 border border-slate-100 rounded-xl p-4 leading-relaxed whitespace-pre-wrap select-text">
+                  {originalText || jdText}
+                </div>
+              </CardContent>
+            </Card>
 
           </div>
+        )}
 
-          {/* RIGHT COLUMN: Source Candidates (Locked by default) */}
-          <div className="space-y-6">
-            
-            <div className={`space-y-6 relative transition-all duration-500 ${!isJdSaved ? 'opacity-40 pointer-events-none' : ''}`}>
+        {/* AUTO-INVITE MODAL */}
+        {showInviteModal && createPortal(
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none animate-fadeIn">
+            <Card className="bg-white border border-slate-200 shadow-2xl max-w-md w-full overflow-visible p-6 relative rounded-3xl animate-fadeIn space-y-5">
               
-              {!isJdSaved && (
-                <div className="absolute inset-0 bg-white/5 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-200 rounded-3xl select-none">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm mb-3">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <h4 className="font-display text-sm font-black text-slate-800 uppercase tracking-tight">Sourcing Console Locked</h4>
-                  <p className="text-[10px] text-slate-400 max-w-[240px] leading-relaxed pt-1">
-                    First complete and save the job definition parameters on the left to activate candidate sourcing options.
-                  </p>
+              <button 
+                type="button"
+                onClick={() => setShowInviteModal(false)} 
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-primary/10 rounded-2xl">
+                  <Mail className="w-6 h-6 text-primary" />
                 </div>
-              )}
-
-              {/* Sourcing Area */}
-              <div className="space-y-6">
-                
-                {/* Option A: Private Upload */}
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2">
-                      <ListPlus className="w-5 h-5 text-primary" />
-                      <span>Option A: Private CV Screener</span>
-                    </CardTitle>
-                    <CardDescription>Upload candidate resumes from your disk to screen against this job description.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    
-                    {/* Drag and Drop */}
-                    <div className="relative border border-dashed border-slate-200 rounded-xl hover:bg-slate-50 hover:border-primary/30 transition-all flex flex-col items-center justify-center p-6 text-center gap-2 cursor-pointer bg-white">
-                      <input 
-                        type="file" 
-                        multiple
-                        accept=".pdf,.docx,.doc,.txt"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={handlePrivateFilesChange}
-                      />
-                      <Upload className="w-6 h-6 text-primary" />
-                      <span className="text-xs text-slate-700 font-bold uppercase tracking-wider">Upload Resumes from Computer</span>
-                      <span className="text-[9px] text-slate-400">Select single or multiple CV files (PDF, DOCX)</span>
-                    </div>
-
-                    {/* File List */}
-                    {privateFiles.length > 0 && (
-                      <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar border border-slate-100 rounded-xl p-3 bg-slate-50/50">
-                        <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 pb-1 mb-2">
-                          <span>Queued Resumes ({privateFiles.length})</span>
-                          <button onClick={() => setPrivateFiles([])} className="text-destructive hover:underline font-bold">Clear All</button>
-                        </div>
-                        {privateFiles.map((file, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-xs py-1.5 border-b border-slate-100 last:border-0">
-                            <div className="flex items-center gap-2 truncate">
-                              <FileText className="w-4 h-4 text-primary shrink-0" />
-                              <span className="font-medium text-slate-700 truncate">{file.name}</span>
-                              <span className="text-[8px] text-slate-400">({(file.size / 1024).toFixed(1)} KB)</span>
-                            </div>
-                            <button 
-                              onClick={() => removePrivateFile(idx)} 
-                              className="text-slate-400 hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <Button 
-                      onClick={handlePrivateSourcing}
-                      disabled={privateFiles.length === 0 || isScreening}
-                      className="w-full h-11 font-bold text-xs shadow-sm bg-primary text-white"
-                    >
-                      {isScreening ? (
-                        <>
-                          <Loader2 className="w-4.5 h-4.5 mr-1.5 animate-spin" />
-                          Screening Private Resumes...
-                        </>
-                      ) : (
-                        "Screen Uploaded Resumes"
-                      )}
-                    </Button>
-
-                  </CardContent>
-                </Card>
-
-                {/* Option B: Search Global Pool */}
-                <Card>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-primary" />
-                      <span>Option B: Search Global Pool</span>
-                    </CardTitle>
-                    <CardDescription>Instantly search the Talent Vector marketplace for candidate matches matching this JD's requirements.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    
-                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-start gap-3">
-                      <Search className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-wider">Semantic Match Queries</h4>
-                        <p className="text-[9px] text-slate-400 leading-relaxed font-medium">
-                          Our matching engine calculates candidate experience alignment (weighted 30%) and core skills semantic cosine similarity (weighted 70%) to discover top fits.
-                        </p>
-                      </div>
-                    </div>
-
-                    <Button 
-                      onClick={handleGlobalSourcing}
-                      disabled={isGlobalSearching}
-                      className="w-full h-11 font-bold text-xs bg-slate-900 hover:bg-slate-800 text-white shadow-sm border border-slate-800"
-                    >
-                      {isGlobalSearching ? (
-                        <>
-                          <Loader2 className="w-4.5 h-4.5 mr-1.5 animate-spin" />
-                          Querying Global Pool...
-                        </>
-                      ) : (
-                        "Search Global Database"
-                      )}
-                    </Button>
-
-                  </CardContent>
-                </Card>
-
+                <div className="space-y-0.5">
+                  <CardTitle className="text-base font-black uppercase tracking-tight text-slate-900">Outreach Campaign</CardTitle>
+                  <CardDescription className="text-[11px]">Automatically invite matching candidates upon saving.</CardDescription>
+                </div>
               </div>
 
-            </div>
+              <div className="space-y-4">
+                <p className="text-xs text-slate-650 leading-relaxed font-medium">
+                  Would you like to send branded interview invitation emails to top candidates matching this role? Match scores are evaluated dynamically.
+                </p>
 
-          </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Select invitation volume</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setInvitePreset(0)}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        invitePreset === 0 
+                          ? 'border-slate-950 bg-slate-50 shadow-sm ring-1 ring-slate-950' 
+                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <span className="text-xs font-black text-slate-950">Save Only</span>
+                      <span className="text-[10px] text-slate-450 font-medium">No auto-emails</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvitePreset(3)}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        invitePreset === 3 
+                          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
+                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-black text-slate-950">Top 3 Candidates</span>
+                        <span className="text-[8px] bg-primary/10 text-primary font-black uppercase px-1.5 py-0.5 rounded-full tracking-wide">Best</span>
+                      </div>
+                      <span className="text-[10px] text-slate-450 font-medium">Auto-send 3 invites</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvitePreset(5)}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        invitePreset === 5 
+                          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
+                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <span className="text-xs font-black text-slate-950">Top 5 Candidates</span>
+                      <span className="text-[10px] text-slate-450 font-medium">Auto-send 5 invites</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInvitePreset('custom')}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
+                        invitePreset === 'custom' 
+                          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
+                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <span className="text-xs font-black text-slate-950">Custom Volume</span>
+                      <span className="text-[10px] text-slate-450 font-medium">Specify invite count</span>
+                    </button>
+                  </div>
+                </div>
 
-        </div>
+                {invitePreset === 'custom' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Number of Candidates to invite</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={customCount}
+                      onChange={(e) => setCustomCount(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                      className="text-xs font-bold border-slate-200 h-9"
+                    />
+                  </div>
+                )}
+
+                {/* Status Indicator Tip Box */}
+                {(() => {
+                  const finalCount = invitePreset === 'custom' ? customCount : invitePreset;
+                  if (finalCount > 0) {
+                    return (
+                      <div className="bg-primary/5 border border-primary/10 rounded-2xl p-3.5 space-y-1 animate-fadeIn">
+                        <div className="flex items-center gap-1.5 text-primary text-[10px] font-black uppercase tracking-wider">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>Outreach Campaign Active</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium leading-normal">
+                          Upon saving, candidates matching the criteria will be ranked. The top <strong>{finalCount}</strong> candidate{finalCount > 1 ? 's' : ''} scoring above <strong>45%</strong> will receive branded success invitation emails.
+                        </p>
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 space-y-1 animate-fadeIn">
+                        <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-black uppercase tracking-wider">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Database Save Only</span>
+                        </div>
+                        <p className="text-[10px] text-slate-450 font-medium leading-normal">
+                          The job details and parsed requirements will be saved. Matching candidates will be ranked and displayed in your dashboard, but no automated outreach will be triggered.
+                        </p>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowInviteModal(false)}
+                  className="flex-1 h-11 font-bold text-xs uppercase tracking-wider border-slate-200 rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="button"
+                  onClick={() => {
+                    const finalCount = invitePreset === 'custom' ? customCount : invitePreset;
+                    executeSaveJD(finalCount);
+                  }}
+                  disabled={isSaving}
+                  className="flex-1 h-11 font-bold text-xs uppercase tracking-wider shadow-md shadow-primary/10 rounded-xl bg-primary text-white"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    invitePreset === 0 ? "Save Job" : "Send & Save"
+                  )}
+                </Button>
+              </div>
+
+            </Card>
+          </div>,
+          document.body
+        )}
 
       </div>
     </AppShell>

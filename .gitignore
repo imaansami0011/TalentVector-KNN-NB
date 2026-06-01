@@ -34,3 +34,7 @@ Generated_DOCX/
 *.pt
 *.pth
 
+# Project-specific uploads & local cache
+data/
+frontend/.tanstack/
+

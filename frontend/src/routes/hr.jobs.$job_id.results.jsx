@@ -1,6 +1,7 @@
 import * as React from "react"
 import { createFileRoute, Link, useParams } from "@tanstack/react-router"
 import { AppShell } from "../components/app-shell"
+import { AdPanel } from "../components/ad-panel"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -25,7 +26,8 @@ import {
   Building,
   UserCheck,
   Send,
-  Award
+  Award,
+  RefreshCw
 } from "lucide-react"
 
 export const Route = createFileRoute("/hr/jobs/$job_id/results")({
@@ -41,7 +43,10 @@ function PredictiveRankingDashboard() {
     queryKey: ["jobResults", job_id, userId],
     queryFn: async () => {
       const res = await fetch(`http://localhost:8000/recruiter/jobs/${job_id}/results`, {
-        headers: { "x-user-id": userId || "" },
+        headers: { 
+          "x-user-id": userId || "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
       })
       if (!res.ok) throw new Error("Failed to fetch job results")
       return res.json()
@@ -52,6 +57,74 @@ function PredictiveRankingDashboard() {
   const [invitedIds, setInvitedIds] = React.useState(new Set())
   const [expandedRowId, setExpandedRowId] = React.useState(null)
 
+  // Bulk selection and sending states
+  const [selectedCandIds, setSelectedCandIds] = React.useState(new Set())
+  const [isBulkSending, setIsBulkSending] = React.useState(false)
+
+  // Bulk send invitations helper
+  const handleBulkSend = async () => {
+    if (selectedCandIds.size === 0) return
+    setIsBulkSending(true)
+    
+    const selectedList = candidates.filter(c => selectedCandIds.has(c.id || c._id))
+    let successCount = 0
+    let failCount = 0
+
+    toast.loading(`Sending ${selectedList.length} branded invitations...`, { id: "bulk-invite" })
+
+    const promises = selectedList.map(async (cand) => {
+      const candId = cand.id || cand._id
+      try {
+        const [inviteRes, statusRes] = await Promise.all([
+          fetch(`http://localhost:8000/recruiter/candidates/${candId}/invite`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": userId || "",
+              "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+            },
+            body: JSON.stringify({ jd_id: job_id })
+          }),
+          fetch(`http://localhost:8000/recruiter/candidates/${candId}/status`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": userId || "",
+              "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+            },
+            body: JSON.stringify({ status: "shortlisted" })
+          })
+        ])
+        
+        if (inviteRes.ok && statusRes.ok) {
+          successCount++
+          setInvitedIds(prev => {
+            const next = new Set(prev)
+            next.add(candId)
+            return next
+          })
+        } else {
+          failCount++
+        }
+      } catch (err) {
+        failCount++
+      }
+    })
+
+    await Promise.all(promises)
+    setIsBulkSending(false)
+    
+    toast.dismiss("bulk-invite")
+    if (failCount === 0) {
+      toast.success(`Successfully sent branded invitations to all ${successCount} selected candidates!`)
+    } else {
+      toast.warning(`Sent ${successCount} invitations, but failed for ${failCount} candidates. Check server credentials.`)
+    }
+    
+    setSelectedCandIds(new Set())
+    refetch()
+  }
+
   // Mutation for sending interview invite
   const inviteMutation = useMutation({
     mutationFn: async ({ candidateId, email }) => {
@@ -60,7 +133,8 @@ function PredictiveRankingDashboard() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": userId || ""
+            "x-user-id": userId || "",
+            "Authorization": `Bearer ${localStorage.getItem("access_token")}`
           },
           body: JSON.stringify({ jd_id: job_id })
         }),
@@ -68,7 +142,8 @@ function PredictiveRankingDashboard() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-user-id": userId || ""
+            "x-user-id": userId || "",
+            "Authorization": `Bearer ${localStorage.getItem("access_token")}`
           },
           body: JSON.stringify({ status: "shortlisted" })
         })
@@ -140,8 +215,8 @@ function PredictiveRankingDashboard() {
   }
 
   return (
-    <AppShell>
-      <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto animate-fadeIn select-none">
+    <AppShell rightPanel={<AdPanel />}>
+      <div className="p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none">
         
         {/* Back Link */}
         <Link 
@@ -206,6 +281,35 @@ function PredictiveRankingDashboard() {
             <span className="text-[9px] text-slate-400 font-bold uppercase">Sorted by Match Fit %</span>
           </div>
 
+          {/* Bulk Action Bar */}
+          {hasCandidates && selectedCandIds.size > 0 && (
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-primary/5 border border-primary/10 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-xs font-bold text-slate-700">
+                  Selected <strong className="text-primary">{selectedCandIds.size}</strong> candidate{selectedCandIds.size > 1 ? 's' : ''} for bulk outreach
+                </span>
+              </div>
+              <Button
+                onClick={handleBulkSend}
+                disabled={isBulkSending}
+                className="h-8 px-4 font-bold text-[10px] uppercase tracking-wider shadow-md shadow-primary/10 rounded-xl bg-primary text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                {isBulkSending ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span>Sending Invitations...</span>
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3 h-3" />
+                    <span>Send Bulk Invites</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
           {!hasCandidates ? (
             <Card className="p-12 text-center flex flex-col items-center justify-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
@@ -222,6 +326,20 @@ function PredictiveRankingDashboard() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      <th className="py-4 px-6 text-center w-12">
+                        <input 
+                          type="checkbox" 
+                          checked={hasCandidates && selectedCandIds.size === candidates.length}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedCandIds(new Set(candidates.map(c => c.id || c._id)))
+                            } else {
+                              setSelectedCandIds(new Set())
+                            }
+                          }}
+                          className="rounded border-slate-350 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                        />
+                      </th>
                       <th className="py-4 px-6 text-center w-16">Rank</th>
                       <th className="py-4 px-6">Candidate Details</th>
                       <th className="py-4 px-6 text-center w-32">Match Score</th>
@@ -265,6 +383,27 @@ function PredictiveRankingDashboard() {
                       return (
                         <React.Fragment key={candId}>
                           <tr className={`group transition-all hover:bg-slate-50/40 border-l-2 border-transparent ${isExpanded ? "bg-slate-50/50 border-l-primary" : ""}`}>
+                            {/* Checkbox */}
+                            <td className="py-4 px-6 text-center">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedCandIds.has(candId)}
+                                onChange={(e) => {
+                                  setSelectedCandIds(prev => {
+                                    const next = new Set(prev)
+                                    if (e.target.checked) {
+                                      next.add(candId)
+                                    } else {
+                                      next.delete(candId)
+                                    }
+                                    return next
+                                  })
+                                }}
+                                className="rounded border-slate-350 text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </td>
+
                             {/* Rank */}
                             <td className="py-4 px-6 text-center">
                               <div className="flex items-center justify-center">
@@ -331,29 +470,44 @@ function PredictiveRankingDashboard() {
                             {/* Actions */}
                             <td className="py-4 px-6 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                {/* Circular Invite Button */}
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    inviteMutation.mutate({ candidateId: candId, email: cand.email });
-                                  }}
-                                  disabled={isInvited || isInviting}
-                                  size="icon"
-                                  className={`w-8 h-8 rounded-full border shadow-sm transition-all cursor-pointer ${
-                                    isInvited 
-                                      ? "bg-emerald-50 border-emerald-250 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700" 
-                                      : "bg-primary border-transparent text-white hover:bg-primary/95"
-                                  }`}
-                                  title={isInvited ? "Branded invitation sent" : "Invite Candidate to Interview"}
-                                >
-                                  {isInviting ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : isInvited ? (
-                                    <UserCheck className="w-3.5 h-3.5" />
-                                  ) : (
-                                    <Send className="w-3.5 h-3.5" />
-                                  )}
-                                </Button>
+                                {/* Invite / Resend Button */}
+                                {isInvited ? (
+                                  <Button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      inviteMutation.mutate({ candidateId: candId, email: cand.email });
+                                    }}
+                                    disabled={isInviting}
+                                    className="h-8 font-extrabold text-[10px] uppercase tracking-wider rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
+                                    title="Resend branded invitation email"
+                                  >
+                                    {isInviting ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="w-3 h-3" />
+                                    )}
+                                    <span>Resend Invite</span>
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      inviteMutation.mutate({ candidateId: candId, email: cand.email });
+                                    }}
+                                    disabled={isInviting}
+                                    className="h-8 font-extrabold text-[10px] uppercase tracking-wider rounded-xl bg-primary border-transparent text-white hover:bg-primary/95 flex items-center gap-1.5 shadow-sm hover:shadow transition-all cursor-pointer"
+                                    title="Invite Candidate to Interview"
+                                  >
+                                    {isInviting ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Send className="w-3 h-3" />
+                                    )}
+                                    <span>Send Invite</span>
+                                  </Button>
+                                )}
 
                                 {/* Row Toggle */}
                                 <Button
@@ -375,7 +529,7 @@ function PredictiveRankingDashboard() {
                           {/* Row Expanded Details */}
                           {isExpanded && (
                             <tr>
-                              <td colSpan="5" className="bg-slate-50/30 p-6 border-t border-slate-100 animate-fadeIn">
+                              <td colSpan="6" className="bg-slate-50/30 p-6 border-t border-slate-100 animate-fadeIn">
                                 <div className="grid gap-6 md:grid-cols-3">
                                   
                                   {/* Contact Details */}
