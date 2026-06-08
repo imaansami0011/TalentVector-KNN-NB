@@ -60,8 +60,20 @@ class ScreenResponse(BaseModel):
     job_domain_detected: str
     top_candidates: List[CandidateResponse]
 
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").strip()
+origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+if frontend_url:
+    origins.append(frontend_url)
+    stripped_url = frontend_url.rstrip("/")
+    if stripped_url not in origins:
+        origins.append(stripped_url)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"INFO: CORS Allowed Origins: {origins}")
     try:
         # Send a ping to confirm a successful connection
         await client.admin.command('ping')
@@ -77,11 +89,7 @@ app = FastAPI(title="Classical Resume Screener - Final Setup", lifespan=lifespan
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        os.getenv("FRONTEND_URL", "http://localhost:5173"),
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
