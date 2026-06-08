@@ -140,7 +140,7 @@ export function AppShell({ children, rightPanel }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground transition-colors duration-200">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground transition-colors duration-200">
       {/* Sidebar */}
       <AppSidebar 
         collapsed={collapsed} 
@@ -150,7 +150,7 @@ export function AppShell({ children, rightPanel }) {
       />
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Sticky Glass Header */}
         <header className="sticky top-0 z-30 h-16 glass border-b border-border dark:border-slate-800 flex items-center justify-between px-6 select-none">
           {/* Mobile hamburger & page context */}
@@ -231,12 +231,12 @@ export function AppShell({ children, rightPanel }) {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-x-hidden flex">
+        <div className="flex-1 overflow-y-auto custom-scrollbar flex">
           <main className="flex-1 min-w-0">
             {children}
           </main>
           {rightPanel && (
-            <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+            <div className="hidden xl:block w-[340px] shrink-0 border-l border-border dark:border-slate-800">
               {rightPanel}
             </div>
           )}

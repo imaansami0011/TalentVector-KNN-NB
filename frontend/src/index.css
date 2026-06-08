@@ -90,9 +90,18 @@
   * {
     @apply border-border;
   }
+  html {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 150%; /* standard fallback, overridden by auto */
+    height: auto;
+  }
   body {
     @apply font-body bg-background text-foreground antialiased selection:bg-primary/10;
     font-feature-settings: "ss01", "cv11";
+    overflow-y: visible;
+    overflow-x: hidden;
+    min-height: 100vh;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display font-bold tracking-tight text-slate-900;
@@ -117,20 +126,41 @@
   background-size: 48px 48px;
 }
 
-/* Custom Scrollbar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+/* Hide scrollbar for internal page divisions (sidebar, main content layout, dropdowns) while keeping scrollability */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 10px;
+
+/* Re-enable and style the main document window scrollbar */
+html {
+  scrollbar-width: auto !important;
+  -ms-overflow-style: auto !important;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-foreground);
+
+html::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+
+html::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: var(--color-border) !important;
+  border-radius: 10px !important;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground) !important;
 }
 
 @keyframes fadeIn {

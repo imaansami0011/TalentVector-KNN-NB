@@ -157,9 +157,7 @@ function UnifiedJobIngestion() {
     }
   }
 
-  const wrapperClass = step === "verify"
-    ? "p-6 flex flex-col lg:h-[calc(100vh-4rem)] lg:overflow-hidden w-full animate-fadeIn select-none space-y-6"
-    : "p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none"
+  const wrapperClass = "p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none"
 
   return (
     <AppShell rightPanel={<AdPanel />}>
@@ -271,8 +269,8 @@ function UnifiedJobIngestion() {
                 <CardDescription>Correct any extraction mistakes. These values calculate candidates' match scores.</CardDescription>
               </CardHeader>
               <CardContent className="p-6 flex-1 flex flex-col min-h-0">
-                <form onSubmit={handleSaveJD} className="flex-1 flex flex-col justify-between min-h-0">
-                  <div className="space-y-4 lg:overflow-y-auto lg:pr-1 custom-scrollbar pb-32">
+                <form onSubmit={handleSaveJD} className="flex-1 flex flex-col justify-between">
+                  <div className="space-y-4 pb-8">
 
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Job Title</label>
@@ -376,8 +374,8 @@ function UnifiedJobIngestion() {
                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-800">Original Job Description</CardTitle>
                 <CardDescription>Parsed text contents for side-by-side verification.</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 flex-1 flex flex-col min-h-0">
-                <div className="flex-1 overflow-y-auto custom-scrollbar font-sans text-xs text-slate-650 bg-slate-50 border border-slate-100 rounded-xl p-4 leading-relaxed whitespace-pre-wrap select-text">
+              <CardContent className="p-6 flex-1 flex flex-col">
+                <div className="flex-1 font-sans text-xs text-slate-650 bg-slate-50 border border-slate-100 rounded-xl p-4 leading-relaxed whitespace-pre-wrap select-text">
                   {originalText || jdText}
                 </div>
               </CardContent>

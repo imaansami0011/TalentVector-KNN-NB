@@ -167,7 +167,7 @@ export function AdPanel({ mode = "recruiter" }) {
   })
 
   return (
-    <aside className="w-[340px] shrink-0 hidden xl:flex flex-col gap-4 py-6 pr-6 select-none">
+    <aside className="w-full flex flex-col gap-4 py-6 px-6 select-none">
       
       {/* Rotating Promo Card */}
       <div 
