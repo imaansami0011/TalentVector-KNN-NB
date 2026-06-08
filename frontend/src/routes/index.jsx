@@ -138,9 +138,9 @@ function LandingPage() {
           <span>Vector Similarity Matching Engine</span>
         </div>
 
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-none max-w-5xl mx-auto font-display">
-          <span className="gradient-text">Vector Sourcing.</span><br />
-          <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-indigo-300 -webkit-background-clip: text -webkit-text-fill-color: transparent">AI Screening. Seamless Matching.</span>
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-none max-w-6xl mx-auto font-display">
+          <span className="gradient-text">Vector Sourcing. </span>
+          <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-indigo-300 bg-clip-text text-transparent">AI Screening. Seamless Matching.</span>
         </h1>
 
         <p className="text-sm md:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium">
