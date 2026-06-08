@@ -213,7 +213,7 @@ function LandingPage() {
       </section>
 
       {/* Interactive Cosine Similarity Demo */}
-      <section id="demo" className="relative z-10 py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-6 space-y-16">
+      <section id="demo" className="relative z-10 py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 space-y-16">
         <div className="text-center space-y-4">
           <span className="text-xs md:text-sm font-black uppercase tracking-[0.2em] text-primary">Live Playground</span>
           <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight font-display">Test the Match Algorithm</h2>
@@ -316,7 +316,7 @@ function LandingPage() {
       </section>
 
       {/* Workspace Comparison Tabs */}
-      <section id="roles" className="relative z-10 py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-6 space-y-16">
+      <section id="roles" className="relative z-10 py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 space-y-16">
         <div className="text-center space-y-4">
           <span className="text-xs md:text-sm font-black uppercase tracking-[0.2em] text-primary">Tailored Workspaces</span>
           <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight font-display">Specialized Environments</h2>
@@ -457,7 +457,7 @@ function LandingPage() {
       </section>
 
       {/* Call to Action Banner */}
-      <section className="relative z-10 py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-6 text-center">
+      <section className="relative z-10 py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 text-center">
         <div className="glass-card p-16 md:p-24 rounded-[3rem] border border-white/10 shadow-2xl relative overflow-hidden space-y-8">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-blue-500/10 pointer-events-none" />
           
@@ -480,13 +480,15 @@ function LandingPage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-slate-900 bg-slate-950 py-16 select-none">
         <div className="max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5 h-9">
             <img src="/favicon.svg" alt="Talent Vector" className="w-9 h-9 object-contain" />
-            <span className="font-display font-black text-base md:text-lg uppercase tracking-tight text-white">Talent Vector</span>
+            <span className="font-display font-black text-base md:text-lg uppercase tracking-tight text-white leading-none">Talent Vector</span>
           </div>
-          <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-500">
-            © 2026 Talent Vector. All rights reserved. Vectorized Recruitment System.
-          </p>
+          <div className="flex items-center h-9">
+            <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-500 m-0 leading-normal">
+              © 2026 Talent Vector. All rights reserved. Vectorized Recruitment System.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
