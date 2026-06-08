@@ -110,7 +110,7 @@ function LandingPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-50 glass-header select-none">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/favicon.svg" alt="Talent Vector" className="w-8 h-8 object-contain" />
             <span className="font-display font-black text-lg uppercase tracking-tight text-white">Talent Vector</span>
@@ -131,19 +131,19 @@ function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative z-10 pt-20 pb-16 md:pt-28 md:pb-24 max-w-7xl mx-auto px-6 text-center space-y-8">
+      <section className="relative z-10 pt-20 pb-16 md:pt-28 md:pb-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 text-center space-y-8">
         {/* Powered Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/5 text-indigo-300 text-[10px] font-black uppercase tracking-widest mx-auto select-none animate-pulse">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Vector Similarity Matching Engine</span>
         </div>
 
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-none max-w-6xl mx-auto font-display">
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-none max-w-[95%] xl:max-w-[1536px] mx-auto font-display">
           <span className="gradient-text">Vector Sourcing. </span>
           <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-indigo-300 bg-clip-text text-transparent">AI Screening. Seamless Matching.</span>
         </h1>
 
-        <p className="text-sm md:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed font-medium">
+        <p className="text-sm md:text-base text-slate-400 max-w-3xl mx-auto leading-relaxed font-medium">
           Say goodbye to keyword-stuffing hacks. Talent Vector extracts and matches professional skills using vector space cosine similarity to find the most accurate matches.
         </p>
 
@@ -163,7 +163,7 @@ function LandingPage() {
       </section>
 
       {/* Feature Showcase Grid */}
-      <section id="features" className="relative z-10 py-16 max-w-7xl mx-auto px-6 space-y-12">
+      <section id="features" className="relative z-10 py-16 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 space-y-12">
         <div className="text-center space-y-2">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Core Capabilities</span>
           <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight font-display">Engineered for Modern Hiring</h2>
@@ -213,7 +213,7 @@ function LandingPage() {
       </section>
 
       {/* Interactive Cosine Similarity Demo */}
-      <section id="demo" className="relative z-10 py-16 max-w-5xl mx-auto px-6 space-y-12">
+      <section id="demo" className="relative z-10 py-16 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-6 space-y-12">
         <div className="text-center space-y-2">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Live Playground</span>
           <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight font-display">Test the Match Algorithm</h2>
@@ -316,7 +316,7 @@ function LandingPage() {
       </section>
 
       {/* Workspace Comparison Tabs */}
-      <section id="roles" className="relative z-10 py-16 max-w-5xl mx-auto px-6 space-y-12">
+      <section id="roles" className="relative z-10 py-16 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-6 space-y-12">
         <div className="text-center space-y-2">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Tailored Workspaces</span>
           <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight font-display">Specialized Environments</h2>
@@ -457,7 +457,7 @@ function LandingPage() {
       </section>
 
       {/* Call to Action Banner */}
-      <section className="relative z-10 py-16 md:py-24 max-w-5xl mx-auto px-6 text-center">
+      <section className="relative z-10 py-16 md:py-24 max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1680px] mx-auto px-6 text-center">
         <div className="glass-card p-12 md:p-16 rounded-[2.5rem] border border-white/10 shadow-2xl relative overflow-hidden space-y-6">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 to-blue-500/10 pointer-events-none" />
           
@@ -479,7 +479,7 @@ function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-slate-900 bg-slate-950 py-12 select-none">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="max-w-[95%] xl:max-w-[1536px] 2xl:max-w-[1720px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img src="/favicon.svg" alt="Talent Vector" className="w-7 h-7 object-contain" />
             <span className="font-display font-black text-sm uppercase tracking-tight text-white">Talent Vector</span>
