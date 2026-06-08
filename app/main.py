@@ -1,4 +1,5 @@
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Header, Depends
 from datetime import datetime, timezone
 from fastapi.middleware.cors import CORSMiddleware
@@ -59,7 +60,20 @@ class ScreenResponse(BaseModel):
     job_domain_detected: str
     top_candidates: List[CandidateResponse]
 
-app = FastAPI(title="Classical Resume Screener - Final Setup")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        # Send a ping to confirm a successful connection
+        await client.admin.command('ping')
+        print("Pinged your deployment. You successfully connected to MongoDB!")
+        # Seed candidates
+        await seed_candidates_if_empty()
+    except Exception as e:
+        print(f"MongoDB connection error: {e}")
+    yield
+    client.close()
+
+app = FastAPI(title="Classical Resume Screener - Final Setup", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -76,21 +90,6 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(candidate_router)
 app.include_router(recruiter_router)
-
-@app.on_event("startup")
-async def startup_db_client():
-    try:
-        # Send a ping to confirm a successful connection
-        await client.admin.command('ping')
-        print("Pinged your deployment. You successfully connected to MongoDB!")
-        # Seed candidates
-        await seed_candidates_if_empty()
-    except Exception as e:
-        print(f"MongoDB connection error: {e}")
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
 
 @app.get("/")
 async def root():

@@ -63,7 +63,7 @@ def clean_text_nb(text):
     text = re.sub(r'RT|cc', ' ', text)  # remove RT and cc
     text = re.sub(r'#\S+', '', text)  # remove hashtags
     text = re.sub(r'@\S+', '  ', text)  # remove mentions
-    text = re.sub(r'[%s]' % re.escape("""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""), ' ', text)  # remove punctuations
+    text = re.sub(r'[%s]' % re.escape(r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""), ' ', text)  # remove punctuations
     text = re.sub(r'[^\x00-\x7f]', r' ', text)  # remove non-ascii
     text = re.sub(r'\s+', ' ', text)  # remove extra whitespace
     return text.strip()
