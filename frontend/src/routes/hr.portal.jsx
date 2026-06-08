@@ -55,6 +55,28 @@ function RecruiterPortalDashboard() {
   const userId = localStorage.getItem("user_id")
   const userName = localStorage.getItem("user_name") || "Recruiter"
 
+  // Fetch Onboarding Status
+  const { data: onboardingData, isLoading: onboardingLoading } = useQuery({
+    queryKey: ["checkOnboarding", userId],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/check-onboarding`, {
+        headers: { 
+          "x-user-id": userId || "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
+      })
+      if (!res.ok) throw new Error("Failed to check onboarding status")
+      return res.json()
+    },
+    enabled: !!userId,
+  })
+
+  React.useEffect(() => {
+    if (onboardingData && !onboardingData.onboarded) {
+      navigate({ to: "/onboarding/recruiter" })
+    }
+  }, [onboardingData, navigate])
+
   // Fetch stats from /recruiter/stats
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ["recruiterStats", userId],
@@ -96,7 +118,7 @@ function RecruiterPortalDashboard() {
     pipeline: { new: 0, review: 0, rejected: 0, shortlisted: 0, hired: 0 }
   }
 
-  const isPageLoading = statsLoading || jdsLoading
+  const isPageLoading = statsLoading || jdsLoading || onboardingLoading
 
   return (
     <AppShell rightPanel={<AdPanel />}>

@@ -55,7 +55,7 @@ export function AppShell({ children, rightPanel }) {
       localStorage.setItem("user_role", data.role)
       
       toast.success(`Switched role session to ${data.role === "recruiter" ? "Recruiter" : "Job Seeker"}!`)
-      window.location.href = data.role === "recruiter" ? "/hr/portal" : "/browse"
+      window.location.href = data.role === "recruiter" ? "/onboarding/recruiter" : "/onboarding/candidate"
     } catch (err) {
       console.error(err)
       toast.error("Failed to switch role session. Please try again.")
@@ -108,7 +108,9 @@ export function AppShell({ children, rightPanel }) {
         localStorage.setItem("user_id", data.user_id)
         localStorage.setItem("user_role", data.role)
         
-        window.location.href = data.role === "recruiter" ? "/hr/portal" : "/browse"
+        window.location.href = data.role === "recruiter"
+          ? (data.status === "onboarded" ? "/hr/portal" : "/onboarding/recruiter")
+          : (data.status === "onboarded" ? "/browse" : "/onboarding/candidate")
       } catch (err) {
         console.error(err)
         alert("Failed to switch role session. Please try again.")
