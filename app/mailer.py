@@ -307,29 +307,7 @@ def send_candidate_invite_email(
             return True
         print("Resend dispatch failed or skipped. Falling back to alternative methods...")
 
-    # 2. Optional: n8n webhook email campaign dispatcher (Medium Priority)
-    n8n_webhook_url = os.getenv("N8N_WEBHOOK_URL")
-    if n8n_webhook_url:
-        print(f"Triggering n8n email workflow for {candidate_email} via webhook...")
-        payload = {
-            "email": candidate_email,
-            "name": candidate_name,
-            "job_title": job_title,
-            "company_name": company_name,
-            "company_website": website,
-            "company_location": location,
-            "recruiter_name": recruiter_name,
-            "recruiter_role": recruiter_role
-        }
-        try:
-            response = httpx.post(n8n_webhook_url, json=payload, timeout=5.0)
-            if response.status_code == 200:
-                print(f"n8n webhook triggered successfully for {candidate_email}")
-                return True
-            else:
-                print(f"n8n webhook returned status code {response.status_code}. Falling back to standard dispatch.")
-        except Exception as e:
-            print(f"Error triggering n8n webhook: {e}. Falling back to standard dispatch.")
+
 
     # 3. Standard SMTP / Simulation Fallback (Low Priority)
     sender_email = os.getenv("SENDER_EMAIL")
@@ -370,25 +348,5 @@ def send_candidate_invite_email(
         return False
 
 
-async def trigger_n8n_email_workflow(candidate_email: str, candidate_name: str, job_title: str) -> bool:
-    """
-    Asynchronously fires a request to the n8n Webhook node to invite a candidate.
-    Fire-and-forget logic that unblocks the FastAPI thread pool completely.
-    """
-    n8n_webhook_url = os.getenv("N8N_WEBHOOK_URL", "https://your-n8n-instance.com/webhook/invite-candidate")
-    
-    payload = {
-        "email": candidate_email,
-        "name": candidate_name,
-        "job_title": job_title
-    }
-    
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(n8n_webhook_url, json=payload, timeout=5.0)
-            return response.status_code == 200
-        except Exception as e:
-            print(f"Error triggering n8n email workflow: {e}")
-            return False
 
 
