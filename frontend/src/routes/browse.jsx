@@ -65,7 +65,7 @@ function MarketDiscovery() {
   const { data: profile } = useQuery({
     queryKey: ['candidateProfile', userEmail],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/candidate/profile?email=${userEmail}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile?email=${userEmail}`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
         }
@@ -80,7 +80,7 @@ function MarketDiscovery() {
   const { data: jobs = [], isLoading, error } = useQuery({
     queryKey: ['candidateJobs'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:8000/candidate/jobs', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/jobs`, {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
         }

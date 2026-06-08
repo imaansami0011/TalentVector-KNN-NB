@@ -61,7 +61,7 @@ function CandidatesPage() {
   const { data: filtersData } = useQuery({
     queryKey: ["candidateFilters", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/candidates/filters", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/filters`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -78,7 +78,7 @@ function CandidatesPage() {
   const { data: jdsData } = useQuery({
     queryKey: ["recruiterJds", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/jds", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jds`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -104,7 +104,7 @@ function CandidatesPage() {
       if (status) params.append("status", status)
       if (jd_id) params.append("jd_id", jd_id)
       
-      const res = await fetch(`http://localhost:8000/recruiter/candidates?${params.toString()}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates?${params.toString()}`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`

@@ -32,7 +32,7 @@ function CandidateOnboardingPage() {
     }
     
     // Check if candidate profile already exists in the database
-    fetch(`http://localhost:8000/candidate/profile?email=${encodeURIComponent(userEmail)}`, {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile?email=${encodeURIComponent(userEmail)}`, {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem("access_token")}`
       }
@@ -101,7 +101,7 @@ function CandidateOnboardingPage() {
     if (file) formData.append('cv_file', file)
     
     try {
-      const response = await fetch('http://localhost:8000/candidate/extract', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/extract`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem("access_token")}`

@@ -140,7 +140,7 @@ function ProfilePage() {
   const { data: profileData, isLoading: profileLoading } = useQuery({
     queryKey: ["recruiterProfile", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/profile", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/profile`, {
         headers: { 
           "x-user-id": userId,
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -194,7 +194,7 @@ function ProfilePage() {
 
     setIsSaving(true)
     try {
-      const res = await fetch("http://localhost:8000/recruiter/profile", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/profile`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

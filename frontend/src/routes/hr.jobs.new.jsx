@@ -1,5 +1,4 @@
 import * as React from "react"
-import { createPortal } from "react-dom"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { AppShell } from "../components/app-shell"
 import { AdPanel } from "../components/ad-panel"
@@ -9,11 +8,11 @@ import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Textarea } from "../components/ui/textarea"
 import { toast } from "sonner"
-import { 
+import {
   ArrowLeft,
-  Sparkles, 
-  Upload, 
-  FileText, 
+  Sparkles,
+  Upload,
+  FileText,
   Loader2,
   Check,
   ChevronRight,
@@ -79,7 +78,7 @@ function UnifiedJobIngestion() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/jd/parse", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/jd/parse`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -97,7 +96,7 @@ function UnifiedJobIngestion() {
       setCompanyEmail(data.company_email || "")
       setSector(data.sector || "General")
       setOriginalText(data.original_text || jdText || "")
-      
+
       toast.success("Job Description parsed successfully! Correct any mistakes below.")
       setStep("verify")
     } catch (err) {
@@ -127,7 +126,7 @@ function UnifiedJobIngestion() {
       location_type: locationType,
       core_skills: coreSkills,
       company_email: companyEmail.trim() || localStorage.getItem("user_email") || "recruiter@example.com",
-      mode: locationType, 
+      mode: locationType,
       company_details: null,
       sector: sector || "General",
       is_hidden: false,
@@ -135,7 +134,7 @@ function UnifiedJobIngestion() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/recruiter/jd/save", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jd/save`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -165,10 +164,10 @@ function UnifiedJobIngestion() {
   return (
     <AppShell rightPanel={<AdPanel />}>
       <div className={wrapperClass}>
-        
+
         {/* Back Link */}
-        <Link 
-          to="/hr/portal" 
+        <Link
+          to="/hr/portal"
           className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -194,14 +193,14 @@ function UnifiedJobIngestion() {
                 <CardDescription>Paste raw description text or drop a file to automatically parse properties.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                
+
                 {/* Upload Zone */}
                 <div className="flex gap-4">
                   <div className="flex-1 space-y-1.5">
                     <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Upload JD File</label>
                     <div className="relative border border-dashed border-slate-300 rounded-xl hover:bg-slate-50 hover:border-primary/50 transition-all flex flex-col items-center justify-center py-8 px-6 text-center gap-2.5 cursor-pointer bg-white">
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept=".pdf,.docx,.doc,.txt"
                         className="absolute inset-0 opacity-0 cursor-pointer"
                         onChange={handleJdFileChange}
@@ -211,7 +210,7 @@ function UnifiedJobIngestion() {
                         {jdFile ? jdFile.name : "Select PDF / Word / Text"}
                       </span>
                       {jdFile && (
-                        <span className="text-[10px] text-emerald-600 font-black uppercase tracking-wider animate-pulse">
+                        <span className="text-[30px] text-emerald-600 font-black uppercase tracking-wider animate-pulse">
                           uploaded now press parse job
                         </span>
                       )}
@@ -229,7 +228,7 @@ function UnifiedJobIngestion() {
                 {/* Text Paste */}
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Raw Job Description Text</label>
-                  <Textarea 
+                  <Textarea
                     placeholder="Paste job details, core responsibilities, qualifications, and requirements here..."
                     className="min-h-[260px] focus:min-h-[420px] text-sm md:text-base font-medium leading-relaxed transition-all duration-300 border-slate-200 p-4"
                     value={jdText}
@@ -238,8 +237,8 @@ function UnifiedJobIngestion() {
                 </div>
 
                 {/* Parse Trigger */}
-                <Button 
-                  onClick={handleParseJD} 
+                <Button
+                  onClick={handleParseJD}
                   disabled={isParsing}
                   className="w-full h-12 text-xs font-black uppercase tracking-widest bg-primary hover:bg-primary/95 text-white shadow-md hover:shadow-lg transition-all rounded-xl mt-3 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
@@ -264,7 +263,7 @@ function UnifiedJobIngestion() {
         {/* STEP 2: Side-by-Side Verification */}
         {step === "verify" && (
           <div className="grid gap-6 lg:grid-cols-2 items-stretch animate-fadeIn w-full lg:flex-1 lg:min-h-0">
-            
+
             {/* Left Column: Form Editor */}
             <Card className="border border-slate-200 shadow-sm flex flex-col h-full lg:min-h-0">
               <CardHeader className="border-b border-border pb-4">
@@ -274,87 +273,87 @@ function UnifiedJobIngestion() {
               <CardContent className="p-6 flex-1 flex flex-col min-h-0">
                 <form onSubmit={handleSaveJD} className="flex-1 flex flex-col justify-between min-h-0">
                   <div className="space-y-4 lg:overflow-y-auto lg:pr-1 custom-scrollbar pb-32">
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Job Title</label>
-                    <Input 
-                      value={title} 
-                      onChange={(e) => setTitle(e.target.value)} 
-                      placeholder="e.g. Senior Backend Engineer"
-                      className="text-xs font-bold border-slate-200"
-                    />
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Core Skills</label>
-                    <SkillsInput 
-                      value={coreSkills} 
-                      onChange={setCoreSkills} 
-                      placeholder="Type or select skills (e.g. Python, React)..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Location Type</label>
-                      <select
-                        value={locationType}
-                        onChange={(e) => setLocationType(e.target.value)}
-                        className="flex h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      >
-                        <option value="Remote">Remote</option>
-                        <option value="Onsite">Onsite</option>
-                        <option value="Hybrid">Hybrid</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Min Exp (Years)</label>
-                      <Input 
-                        type="number" 
-                        min={0}
-                        value={minExperience} 
-                        onChange={(e) => setMinExperience(parseInt(e.target.value, 10) || 0)} 
-                        className="text-xs font-medium border-slate-200"
+                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Job Title</label>
+                      <Input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="e.g. Senior Backend Engineer"
+                        className="text-xs font-bold border-slate-200"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Company Email</label>
-                      <Input 
-                        value={companyEmail} 
-                        onChange={(e) => setCompanyEmail(e.target.value)} 
-                        placeholder="hiring@company.com"
-                        className="text-xs font-medium border-slate-200"
+                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Core Skills</label>
+                      <SkillsInput
+                        value={coreSkills}
+                        onChange={setCoreSkills}
+                        placeholder="Type or select skills (e.g. Python, React)..."
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Sector / Domain</label>
-                      <Input 
-                        value={sector} 
-                        onChange={(e) => setSector(e.target.value)} 
-                        placeholder="e.g. Technology"
-                        className="text-xs font-medium border-slate-200"
-                      />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Location Type</label>
+                        <select
+                          value={locationType}
+                          onChange={(e) => setLocationType(e.target.value)}
+                          className="flex h-9 w-full rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        >
+                          <option value="Remote">Remote</option>
+                          <option value="Onsite">Onsite</option>
+                          <option value="Hybrid">Hybrid</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Min Exp (Years)</label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={minExperience}
+                          onChange={(e) => setMinExperience(parseInt(e.target.value, 10) || 0)}
+                          className="text-xs font-medium border-slate-200"
+                        />
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Company Email</label>
+                        <Input
+                          value={companyEmail}
+                          onChange={(e) => setCompanyEmail(e.target.value)}
+                          placeholder="hiring@company.com"
+                          className="text-xs font-medium border-slate-200"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 block">Sector / Domain</label>
+                        <Input
+                          value={sector}
+                          onChange={(e) => setSector(e.target.value)}
+                          placeholder="e.g. Technology"
+                          className="text-xs font-medium border-slate-200"
+                        />
+                      </div>
+                    </div>
 
                   </div>
 
                   {/* Actions buttons */}
                   <div className="flex items-center gap-3 pt-6 mt-auto">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => setStep("upload")}
                       className="flex-1 h-11 font-bold text-xs uppercase tracking-wider border-slate-200 rounded-xl"
                     >
                       Re-upload / Back
                     </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={isSaving} 
+                    <Button
+                      type="submit"
+                      disabled={isSaving}
                       className="flex-1 h-11 font-bold text-xs uppercase tracking-wider shadow-md shadow-primary/10 rounded-xl bg-primary text-white"
                     >
                       {isSaving ? (
@@ -388,13 +387,13 @@ function UnifiedJobIngestion() {
         )}
 
         {/* AUTO-INVITE MODAL */}
-        {showInviteModal && createPortal(
+        {showInviteModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none animate-fadeIn">
             <Card className="bg-white border border-slate-200 shadow-2xl max-w-md w-full overflow-visible p-6 relative rounded-3xl animate-fadeIn space-y-5">
-              
-              <button 
+
+              <button
                 type="button"
-                onClick={() => setShowInviteModal(false)} 
+                onClick={() => setShowInviteModal(false)}
                 className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1"
               >
                 <X className="w-5 h-5" />
@@ -421,23 +420,21 @@ function UnifiedJobIngestion() {
                     <button
                       type="button"
                       onClick={() => setInvitePreset(0)}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        invitePreset === 0 
-                          ? 'border-slate-950 bg-slate-50 shadow-sm ring-1 ring-slate-950' 
-                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
-                      }`}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${invitePreset === 0
+                        ? 'border-slate-950 bg-slate-50 shadow-sm ring-1 ring-slate-950'
+                        : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                        }`}
                     >
                       <span className="text-xs font-black text-slate-950">Save Only</span>
-                      <span className="text-[10px] text-slate-450 font-medium">No auto-emails</span>
+                      <span className="text-[10px] text-slate-400 font-medium">No auto-emails</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setInvitePreset(3)}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        invitePreset === 3 
-                          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
-                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
-                      }`}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${invitePreset === 3
+                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary'
+                        : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                        }`}
                     >
                       <div className="flex items-center justify-between w-full">
                         <span className="text-xs font-black text-slate-950">Top 3 Candidates</span>
@@ -448,26 +445,24 @@ function UnifiedJobIngestion() {
                     <button
                       type="button"
                       onClick={() => setInvitePreset(5)}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        invitePreset === 5 
-                          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
-                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
-                      }`}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${invitePreset === 5
+                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary'
+                        : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                        }`}
                     >
                       <span className="text-xs font-black text-slate-950">Top 5 Candidates</span>
-                      <span className="text-[10px] text-slate-450 font-medium">Auto-send 5 invites</span>
+                      <span className="text-[10px] text-slate-400 font-medium">Auto-send 5 invites</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setInvitePreset('custom')}
-                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${
-                        invitePreset === 'custom' 
-                          ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary' 
-                          : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
-                      }`}
+                      className={`flex flex-col items-start p-3 rounded-2xl border text-left transition-all ${invitePreset === 'custom'
+                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary'
+                        : 'border-slate-200 hover:border-slate-350 hover:bg-slate-50/50'
+                        }`}
                     >
                       <span className="text-xs font-black text-slate-950">Custom Volume</span>
-                      <span className="text-[10px] text-slate-450 font-medium">Specify invite count</span>
+                      <span className="text-[10px] text-slate-400 font-medium">Specify invite count</span>
                     </button>
                   </div>
                 </div>
@@ -519,15 +514,15 @@ function UnifiedJobIngestion() {
 
               {/* Action buttons */}
               <div className="flex items-center gap-3 pt-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setShowInviteModal(false)}
                   className="flex-1 h-11 font-bold text-xs uppercase tracking-wider border-slate-200 rounded-xl"
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   type="button"
                   onClick={() => {
                     const finalCount = invitePreset === 'custom' ? customCount : invitePreset;
@@ -548,8 +543,7 @@ function UnifiedJobIngestion() {
               </div>
 
             </Card>
-          </div>,
-          document.body
+          </div>
         )}
 
       </div>

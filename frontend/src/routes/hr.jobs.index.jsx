@@ -70,7 +70,7 @@ function RecruiterJobsManager() {
   const { data: jds = [], isLoading, refetch } = useQuery({
     queryKey: ["recruiterJds", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/jds", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jds`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -85,7 +85,7 @@ function RecruiterJobsManager() {
   // --- MUTATION: Toggle Visibility (Hide/Unhide) ---
   const toggleVisibilityMutation = useMutation({
     mutationFn: async ({ job_id, is_hidden }) => {
-      const res = await fetch(`http://localhost:8000/recruiter/jd/${job_id}/visibility?is_hidden=${is_hidden}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jd/${job_id}/visibility?is_hidden=${is_hidden}`, {
         method: "POST",
         headers: {
           "x-user-id": userId || "",
@@ -108,7 +108,7 @@ function RecruiterJobsManager() {
   const updateJobMutation = useMutation({
     mutationFn: async (updatedData) => {
       const { id, ...payload } = updatedData
-      const res = await fetch(`http://localhost:8000/recruiter/jd/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jd/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

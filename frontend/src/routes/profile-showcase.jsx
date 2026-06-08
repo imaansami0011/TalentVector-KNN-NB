@@ -94,7 +94,7 @@ Best regards,
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/candidate/profile?email=${encodeURIComponent(targetEmail)}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile?email=${encodeURIComponent(targetEmail)}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem("access_token")}`
         }
@@ -420,7 +420,7 @@ Best regards,
                   <button 
                     onClick={() => {
                       if (profile.original_cv_path) {
-                        window.open(`http://localhost:8000/${profile.original_cv_path}`, '_blank');
+                        window.open(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/${profile.original_cv_path}`, '_blank');
                       } else {
                         toast.error("Original resume file not available for download.");
                       }

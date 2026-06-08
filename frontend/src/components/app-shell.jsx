@@ -34,7 +34,7 @@ export function AppShell({ children, rightPanel }) {
     setIsSwitching(true)
     const targetRole = currentRole === "recruiter" ? "candidate" : "recruiter"
     try {
-      const res = await fetch("http://localhost:8000/auth/switch-role", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/switch-role`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -66,7 +66,7 @@ export function AppShell({ children, rightPanel }) {
 
   React.useEffect(() => {
     if (!userEmail) return
-    fetch(`http://localhost:8000/auth/roles?email=${encodeURIComponent(userEmail)}`, {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/roles?email=${encodeURIComponent(userEmail)}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`
       }
@@ -89,7 +89,7 @@ export function AppShell({ children, rightPanel }) {
     if (userRoles.includes(targetRole)) {
       setIsSwitching(true)
       try {
-        const res = await fetch("http://localhost:8000/auth/switch-role", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/switch-role`, {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",

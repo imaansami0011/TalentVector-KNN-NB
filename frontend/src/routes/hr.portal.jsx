@@ -59,7 +59,7 @@ function RecruiterPortalDashboard() {
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ["recruiterStats", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/stats", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/stats`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -75,7 +75,7 @@ function RecruiterPortalDashboard() {
   const { data: jdsData, isLoading: jdsLoading } = useQuery({
     queryKey: ["recruiterJds", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/jds", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jds`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`

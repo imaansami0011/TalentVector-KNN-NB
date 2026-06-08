@@ -24,7 +24,7 @@ function IdentityGateway() {
   const handleEmailSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch("http://localhost:8000/auth/register-init", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/register-init`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role: role === "hr" ? "recruiter" : "candidate" })
@@ -55,7 +55,7 @@ function IdentityGateway() {
 
   const performLogin = async (loginEmail, loginPassword, createMissing = false) => {
     try {
-      const response = await fetch("http://localhost:8000/auth/login", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,7 +105,7 @@ function IdentityGateway() {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault()
     try {
-      const response = await fetch("http://localhost:8000/auth/verify-otp", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -138,7 +138,7 @@ function IdentityGateway() {
     setGoogleLoading(true)
     setStep("google-signin")
     try {
-      const backendRes = await fetch("http://localhost:8000/auth/google", {
+      const backendRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/google`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

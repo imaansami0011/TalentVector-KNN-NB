@@ -219,7 +219,7 @@ function RecruiterOnboardingPage() {
   const { data: onboardingData, isLoading: onboardingLoading } = useQuery({
     queryKey: ["checkOnboarding", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/check-onboarding", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/check-onboarding`, {
         headers: { 
           "x-user-id": userId,
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -235,7 +235,7 @@ function RecruiterOnboardingPage() {
   const { data: profileData } = useQuery({
     queryKey: ["recruiterProfile", userId],
     queryFn: async () => {
-      const res = await fetch("http://localhost:8000/recruiter/profile", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/profile`, {
         headers: { 
           "x-user-id": userId,
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -304,7 +304,7 @@ function RecruiterOnboardingPage() {
       
       setIsSaving(true)
       try {
-        const res = await fetch("http://localhost:8000/recruiter/company", {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/company`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

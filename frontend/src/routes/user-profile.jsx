@@ -85,7 +85,7 @@ function UserProfilePage() {
         setProfile(newProfile)
 
         // Save to backend immediately so the profile is created
-        await fetch('http://localhost:8000/candidate/profile', {
+        await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -99,7 +99,7 @@ function UserProfilePage() {
         toast.success("Profile initialized from extracted resume!")
       } else {
         // Fetch from backend
-        const response = await fetch(`http://localhost:8000/candidate/profile?email=${userEmail}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile?email=${userEmail}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem("access_token")}`
           }
@@ -150,7 +150,7 @@ function UserProfilePage() {
     formData.append('cv_file', file)
 
     try {
-      const response = await fetch('http://localhost:8000/candidate/extract', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/extract`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem("access_token")}`
@@ -204,7 +204,7 @@ function UserProfilePage() {
     setShowSuccess(false)
 
     try {
-      const response = await fetch('http://localhost:8000/candidate/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

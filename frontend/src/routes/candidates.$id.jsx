@@ -48,8 +48,8 @@ function CandidateDetailPage() {
     queryKey: ["candidateDetails", id, jd_id],
     queryFn: async () => {
       const url = jd_id 
-        ? `http://localhost:8000/recruiter/candidates/${id}?jd_id=${jd_id}`
-        : `http://localhost:8000/recruiter/candidates/${id}`
+        ? `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${id}?jd_id=${jd_id}`
+        : `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${id}`
       const res = await fetch(url, {
         headers: { 
           "x-user-id": userId ?? "",
@@ -65,7 +65,7 @@ function CandidateDetailPage() {
   // Update status mutation
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus) => {
-      const res = await fetch(`http://localhost:8000/recruiter/candidates/${id}/status`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${id}/status`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

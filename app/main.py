@@ -96,6 +96,10 @@ async def shutdown_db_client():
 async def root():
     return {"message": "Classical Resume Screener Production API is active"}
 
+@app.get("/keep-alive")
+async def keep_alive():
+    return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}
+
 def save_upload_file(upload_file: UploadFile, directory: str) -> str:
     """Saves an UploadFile to disk and returns the file path."""
     os.makedirs(directory, exist_ok=True)
@@ -372,4 +376,5 @@ async def predict_resume_category(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

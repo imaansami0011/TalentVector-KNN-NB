@@ -42,7 +42,7 @@ function PredictiveRankingDashboard() {
   const { data: resultsData, isLoading, refetch } = useQuery({
     queryKey: ["jobResults", job_id, userId],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/recruiter/jobs/${job_id}/results`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jobs/${job_id}/results`, {
         headers: { 
           "x-user-id": userId || "",
           "Authorization": `Bearer ${localStorage.getItem("access_token")}`
@@ -76,7 +76,7 @@ function PredictiveRankingDashboard() {
       const candId = cand.id || cand._id
       try {
         const [inviteRes, statusRes] = await Promise.all([
-          fetch(`http://localhost:8000/recruiter/candidates/${candId}/invite`, {
+          fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${candId}/invite`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -85,7 +85,7 @@ function PredictiveRankingDashboard() {
             },
             body: JSON.stringify({ jd_id: job_id })
           }),
-          fetch(`http://localhost:8000/recruiter/candidates/${candId}/status`, {
+          fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${candId}/status`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -129,7 +129,7 @@ function PredictiveRankingDashboard() {
   const inviteMutation = useMutation({
     mutationFn: async ({ candidateId, email }) => {
       const [inviteRes, statusRes] = await Promise.all([
-        fetch(`http://localhost:8000/recruiter/candidates/${candidateId}/invite`, {
+        fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${candidateId}/invite`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -138,7 +138,7 @@ function PredictiveRankingDashboard() {
           },
           body: JSON.stringify({ jd_id: job_id })
         }),
-        fetch(`http://localhost:8000/recruiter/candidates/${candidateId}/status`, {
+        fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${candidateId}/status`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -562,7 +562,7 @@ function PredictiveRankingDashboard() {
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          onClick={() => window.open(`http://localhost:8000/${cand.cv_file_path}`, '_blank')}
+                                          onClick={() => window.open(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/${cand.cv_file_path}`, '_blank')}
                                           className="w-full h-9 text-[10px] font-black uppercase tracking-widest border-slate-200 text-slate-500 hover:bg-slate-100 flex items-center justify-center gap-1.5"
                                         >
                                           <Download className="w-3.5 h-3.5" />
