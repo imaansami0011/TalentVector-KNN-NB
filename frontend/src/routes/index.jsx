@@ -84,7 +84,7 @@ function LandingPage() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-slate-100 relative overflow-x-hidden overflow-y-auto selection:bg-indigo-500/30">
+    <div className="w-full min-h-screen bg-slate-950 text-slate-100 relative overflow-x-hidden selection:bg-indigo-500/30">
       <style>{`
         @keyframes float-slow-1 {
           0%, 100% { transform: translate(0px, 0px) scale(1); }

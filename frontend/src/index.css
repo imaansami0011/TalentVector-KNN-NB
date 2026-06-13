@@ -6,31 +6,31 @@
   /* OKLCH Theme Colors (Cloud White SaaS Direction) */
   --color-background: oklch(0.992 0.002 250);
   --color-foreground: oklch(0.18 0.02 264);
-  
+
   --color-card: oklch(1 0 0);
   --color-card-foreground: oklch(0.18 0.02 264);
-  
+
   --color-popover: oklch(1 0 0);
   --color-popover-foreground: oklch(0.18 0.02 264);
-  
+
   --color-primary: oklch(0.62 0.19 257);
   --color-primary-foreground: oklch(1 0 0);
-  
+
   --color-secondary: oklch(0.955 0.01 250);
   --color-secondary-foreground: oklch(0.18 0.02 264);
-  
+
   --color-muted: oklch(0.955 0.01 250);
   --color-muted-foreground: oklch(0.42 0.02 257);
-  
+
   --color-accent: oklch(0.97 0.01 250);
   --color-accent-foreground: oklch(0.18 0.02 264);
-  
+
   --color-destructive: oklch(0.62 0.21 28);
   --color-destructive-foreground: oklch(0.99 0.002 28);
-  
+
   --color-success: oklch(0.67 0.19 145);
   --color-warning: oklch(0.79 0.16 80);
-  
+
   --color-border: oklch(0.85 0.01 250);
   --color-input: oklch(0.82 0.01 250);
   --color-ring: oklch(0.62 0.19 257);
@@ -90,12 +90,15 @@
   * {
     @apply border-border;
   }
+
   html {
     overflow-y: auto;
     overflow-x: hidden;
-    height: 150%; /* standard fallback, overridden by auto */
+    height: 150%;
+    /* standard fallback, overridden by auto */
     height: auto;
   }
+
   body {
     @apply font-body bg-background text-foreground antialiased selection:bg-primary/10;
     font-feature-settings: "ss01", "cv11";
@@ -103,11 +106,19 @@
     overflow-x: hidden;
     min-height: 100vh;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display font-bold tracking-tight text-slate-900;
   }
+
   ::placeholder {
-    color: oklch(0.43 0.018 250) !important; /* Force darker placeholders */
+    color: oklch(0.43 0.018 250) !important;
+    /* Force darker placeholders */
     opacity: 0.8;
   }
 }
@@ -128,8 +139,10 @@
 
 /* Hide scrollbar for internal page divisions (sidebar, main content layout, dropdowns) while keeping scrollability */
 * {
-  scrollbar-width: none !important; /* Firefox */
-  -ms-overflow-style: none !important; /* IE and Edge */
+  scrollbar-width: none !important;
+  /* Firefox */
+  -ms-overflow-style: none !important;
+  /* IE and Edge */
 }
 
 *::-webkit-scrollbar {
@@ -164,8 +177,15 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fadeIn {
@@ -173,8 +193,15 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .animate-slideInRight {
@@ -182,8 +209,13 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes sweep {
-  from { transform: translateX(-100%) skewX(-30deg); }
-  to { transform: translateX(100%) skewX(-30deg); }
+  from {
+    transform: translateX(-100%) skewX(-30deg);
+  }
+
+  to {
+    transform: translateX(100%) skewX(-30deg);
+  }
 }
 
 .animate-sweep {
@@ -191,8 +223,15 @@ html::-webkit-scrollbar-thumb:hover {
 }
 
 @keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .animate-scaleIn {
