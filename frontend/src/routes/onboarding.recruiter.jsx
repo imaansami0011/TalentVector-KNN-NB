@@ -1,7 +1,7 @@
 import * as React from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Sparkles, Check, ArrowRight, Loader2, ChevronDown, Building2, ImagePlus, Upload, X } from "lucide-react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "../components/ui/button"
 import { Card, CardContent } from "../components/ui/card"
 import { Input } from "../components/ui/input"
@@ -135,6 +135,7 @@ const COMPANY_METADATA = {
 
 function RecruiterOnboardingPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [step, setStep] = React.useState(1) // 1 to 4
   const [isSaving, setIsSaving] = React.useState(false)
   
@@ -761,6 +762,10 @@ function RecruiterOnboardingPage() {
 
                   <Button 
                     onClick={() => {
+                      queryClient.setQueryData(["checkOnboarding", userId], (old) => ({
+                        ...old,
+                        onboarded: true
+                      }))
                       toast.success("Welcome to your dashboard!")
                       navigate({ to: "/hr/portal" })
                     }} 

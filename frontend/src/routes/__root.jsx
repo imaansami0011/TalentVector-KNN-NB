@@ -1,5 +1,5 @@
 import * as React from "react"
-import { createRootRouteWithContext, Outlet, ScrollRestoration, Link } from "@tanstack/react-router"
+import { createRootRouteWithContext, Outlet, Link } from "@tanstack/react-router"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { Toaster } from "sonner"
 
@@ -22,7 +22,6 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ScrollRestoration />
       <Outlet />
       <Toaster position="top-right" richColors toastOptions={{ style: { borderRadius: '12px' } }} />
     </QueryClientProvider>

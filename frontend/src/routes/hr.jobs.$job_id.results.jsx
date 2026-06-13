@@ -218,12 +218,11 @@ function PredictiveRankingDashboard() {
     <AppShell rightPanel={<AdPanel />}>
       <div className="p-6 md:p-8 space-y-6 w-full animate-fadeIn select-none">
         
-        {/* Back Link */}
         <Link 
           to="/hr/portal" 
-          className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs md:text-sm font-extrabold uppercase tracking-wider text-slate-700 hover:text-slate-900 transition-all border border-slate-200/50 w-fit hover:shadow-sm group"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-4.5 h-4.5 text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
           <span>Back to dashboard</span>
         </Link>
 
@@ -509,19 +508,21 @@ function PredictiveRankingDashboard() {
                                   </Button>
                                 )}
 
-                                {/* Row Toggle */}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setExpandedRowId(isExpanded ? null : candId)}
-                                  className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                {/* View Profile Link */}
+                                <Link
+                                  to="/candidates/$id"
+                                  params={{ id: candId }}
+                                  search={{ jd_id: job_id || undefined, from: `/hr/jobs/${job_id}/results` }}
                                 >
-                                  {isExpanded ? (
-                                    <ChevronUp className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronDown className="w-4 h-4" />
-                                  )}
-                                </Button>
+                                  <Button
+                                    type="button"
+                                    className="h-8 font-extrabold text-[10px] uppercase tracking-wider rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 flex items-center gap-1.5 shadow-none transition-all cursor-pointer"
+                                    title="View Candidate Details"
+                                  >
+                                    <User className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>View Profile</span>
+                                  </Button>
+                                </Link>
                               </div>
                             </td>
                           </tr>

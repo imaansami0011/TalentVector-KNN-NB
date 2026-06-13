@@ -200,14 +200,24 @@ def extract_entities(text, is_jd=False):
     entities["Skills"] = sorted(list(all_skills))
 
     # 5. Designation heuristic
-    lines = text.split('\n')[:15]
-    for line in lines:
-        for title in COMMON_TITLES:
-            if title.lower() in line.lower() and len(line.split()) < 6:
-                entities["Designation"] = line.strip()
+    # First check for explicit title labels (common in JDs and some resumes)
+    title_match = re.search(r'^(?:job\s+)?title\s*:\s*([^\n\r]+)', text, re.IGNORECASE | re.MULTILINE)
+    if title_match:
+        entities["Designation"] = title_match.group(1).strip()
+    
+    if entities["Designation"] == "Not Found" or not entities["Designation"]:
+        lines = text.split('\n')[:15]
+        for line in lines:
+            line_str = line.strip()
+            if not line_str:
+                continue
+            for title in COMMON_TITLES:
+                if title.lower() in line_str.lower() and len(line_str.split()) < 10:
+                    cleaned_line = re.sub(r'^(?:job\s+)?title\s*:\s*', '', line_str, flags=re.IGNORECASE)
+                    entities["Designation"] = cleaned_line.strip()
+                    break
+            if entities["Designation"] != "Not Found":
                 break
-        if entities["Designation"] != "Not Found":
-            break
 
     return entities
 

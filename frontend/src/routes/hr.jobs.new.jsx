@@ -387,7 +387,7 @@ function UnifiedJobIngestion() {
         {/* AUTO-INVITE MODAL */}
         {showInviteModal && (
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none animate-fadeIn">
-            <Card className="bg-white border border-slate-200 shadow-2xl max-w-md w-full overflow-visible p-6 relative rounded-3xl animate-fadeIn space-y-5">
+            <Card className="bg-white border border-slate-200 shadow-2xl max-w-md w-full overflow-visible p-6 relative rounded-3xl animate-scaleIn space-y-5">
 
               <button
                 type="button"
@@ -490,7 +490,7 @@ function UnifiedJobIngestion() {
                           <span>Outreach Campaign Active</span>
                         </div>
                         <p className="text-[10px] text-slate-500 font-medium leading-normal">
-                          Upon saving, candidates matching the criteria will be ranked. The top <strong>{finalCount}</strong> candidate{finalCount > 1 ? 's' : ''} scoring above <strong>45%</strong> will receive branded success invitation emails.
+                          Upon saving, candidates matching the criteria will be ranked. The top <strong>{finalCount}</strong> candidate{finalCount > 1 ? 's' : ''} scoring above <strong>75%</strong> will receive branded success invitation emails.
                         </p>
                       </div>
                     );

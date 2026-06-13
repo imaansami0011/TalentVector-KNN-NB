@@ -265,20 +265,29 @@ function UserProfilePage() {
             )}
           </div>
           <h2 className="font-display text-base font-extrabold text-slate-900 uppercase leading-tight">{profile.name || userName}</h2>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{profile.email}</p>
+          <p className="text-[10px] font-semibold text-primary/70 tracking-wide mt-1 truncate w-full px-1">{profile.email || userEmail}</p>
 
           <div className="w-full h-px bg-slate-100 my-4" />
 
-          <div className="flex flex-col gap-2 w-full text-left">
+          <div className="flex flex-col gap-2.5 w-full text-left">
+            <div className="flex items-center gap-2.5 text-slate-600 font-semibold text-xs min-w-0">
+              <Mail className="w-4 h-4 text-primary/60 shrink-0" />
+              <span className="truncate text-slate-700 font-bold">{profile.email || userEmail || '—'}</span>
+            </div>
+            {(profile.phone && profile.phone !== 'Not Found') && (
+              <div className="flex items-center gap-2.5 text-slate-600 font-semibold text-xs min-w-0">
+                <Phone className="w-4 h-4 text-primary/60 shrink-0" />
+                <span className="truncate text-slate-700 font-bold">{profile.phone}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2.5 text-slate-500 font-medium text-xs">
-              <Briefcase className="w-4 h-4 text-slate-400" />
+              <Briefcase className="w-4 h-4 text-slate-400 shrink-0" />
               <span>{profile.sector} Expert</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-500 font-medium text-xs">
-              <History className="w-4 h-4 text-slate-400" />
+              <History className="w-4 h-4 text-slate-400 shrink-0" />
               <span>{profile.total_experience} Years Experience</span>
             </div>
-
           </div>
         </div>
 

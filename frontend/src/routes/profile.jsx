@@ -18,7 +18,9 @@ import {
   Building2,
   Loader2,
   Upload,
-  X
+  X,
+  Mail,
+  MapPin
 } from "lucide-react"
 
 export const Route = createFileRoute("/profile")({
@@ -271,12 +273,26 @@ function ProfilePage() {
                 </button>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                   <h2 className="text-lg font-black text-slate-900 uppercase leading-none">{fullName || "Recruiter Profile"}</h2>
                   <Badge variant="new" className="h-5 text-[8px] bg-primary/10 border-primary/20 text-primary">Pro Plan</Badge>
                 </div>
                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{role || "Sourcing Specialist"} @ {company || "Talent Vector Partner"}</p>
+                <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-start pt-0.5">
+                  {email && (
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
+                      <Mail className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+                      {email}
+                    </span>
+                  )}
+                  {hq && (
+                    <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                      <MapPin className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                      {hq}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

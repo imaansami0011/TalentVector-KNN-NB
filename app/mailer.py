@@ -38,7 +38,7 @@ def dispatch_resend_email(
     params = {
         "from": sender_email,
         "to": [candidate_email],
-        "subject": f"Interview Invitation: {job_title} at {company_name}",
+        "subject": f"Exclusive Interview Invitation: {job_title} | {company_name}",
         "html": body_html,
         "text": body_text
     }
@@ -72,11 +72,13 @@ def send_candidate_invite_email(
     hq = company_details.get("hq_location", "")
     address = company_details.get("address", "")
     location = hq or address or ""
-    
+    portal_url = website if website else "https://talentvector.com/portal"
+
     # Plain text version for fallback/text parts
     body_text = (
         f"Dear {candidate_name},\n\n"
-        f"We are excited to invite you for an interview for the {job_title} position at {company_name}.\n\n"
+        f"We hope this email finds you well. Our hiring and talent vetting team at {company_name} recently analyzed your outstanding professional background, skills, and portfolio.\n\n"
+        f"We are highly impressed by your achievements and believe you would be an excellent fit for our team. We would love to invite you for an official interview for the following position:\n\n"
         f"Position: {job_title}\n"
         f"Company: {company_name}\n"
     )
@@ -86,9 +88,8 @@ def send_candidate_invite_email(
         body_text += f"Location: {location}\n"
         
     body_text += (
-        f"\nOur team was highly impressed by your qualifications and experience. "
-        f"{recruiter_name} ({recruiter_role}) from our talent acquisition team will be in touch shortly "
-        f"to coordinate the next steps.\n\n"
+        f"\nTo help us connect at a time that works best for you, please click the link below to access our scheduling portal and select a convenient time slot for a brief introductory call:\n\n"
+        f"Scheduling Portal: {portal_url}\n\n"
         f"Best regards,\n"
         f"{recruiter_name}\n"
         f"{recruiter_role}\n"
@@ -96,9 +97,8 @@ def send_candidate_invite_email(
     )
 
     # Branded, premium HTML version to satisfy anti-spam checks and improve readability
-    portal_url = website if website else "https://talentvector.com/portal"
     location_row = f'<div class="job-detail"><strong>Location:</strong> {location}</div>' if location else ''
-    website_row = f'<div class="job-detail"><strong>Website:</strong> <a href="{website}" style="color: #4f46e5; text-decoration: none; font-weight: 600;">{website}</a></div>' if website else ''
+    website_row = f'<div class="job-detail"><strong>Website:</strong> <a href="{website}" style="color: #a855f7; text-decoration: none; font-weight: 600;">{website}</a></div>' if website else ''
     
     body_html = f"""<!DOCTYPE html>
 <html>
@@ -129,7 +129,7 @@ def send_candidate_invite_email(
     overflow: hidden;
   }}
   .header {{
-    background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
     padding: 40px 32px;
     text-align: center;
     color: #ffffff;
@@ -146,7 +146,7 @@ def send_candidate_invite_email(
     text-transform: uppercase;
     display: inline-block;
     margin-bottom: 16px;
-    color: #e0e7ff;
+    color: #ffffff;
   }}
   .header h1 {{
     margin: 0;
@@ -158,7 +158,7 @@ def send_candidate_invite_email(
   .header p {{
     margin: 8px 0 0 0;
     font-size: 14px;
-    color: #c7d2fe;
+    color: #f3f4f6;
     font-weight: 500;
   }}
   .content {{
@@ -180,7 +180,7 @@ def send_candidate_invite_email(
   }}
   .job-card {{
     background-color: #f9fafb;
-    border-left: 4px solid #4f46e5;
+    border-left: 4px solid #a855f7;
     border-top: 1px solid #f3f4f6;
     border-right: 1px solid #f3f4f6;
     border-bottom: 1px solid #f3f4f6;
@@ -210,7 +210,7 @@ def send_candidate_invite_email(
     margin: 32px 0;
   }}
   .cta-button {{
-    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
     color: #ffffff !important;
     padding: 14px 28px;
     font-size: 14px;
@@ -218,7 +218,7 @@ def send_candidate_invite_email(
     text-decoration: none;
     border-radius: 10px;
     display: inline-block;
-    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
     letter-spacing: 0.01em;
   }}
   .signature {{
@@ -261,7 +261,7 @@ def send_candidate_invite_email(
     </div>
     <div class="content">
       <div class="greeting">Dear {candidate_name},</div>
-      <p class="intro-text">After reviewing your background and profile in our automated talent vetting system, we were highly impressed by your experience. We would like to officially invite you for an interview for the following position:</p>
+      <p class="intro-text">We hope this email finds you well. Our hiring and talent vetting team at {company_name} recently analyzed your outstanding professional background, skills, and portfolio. We are highly impressed by your achievements and believe you would be an excellent fit for our team. We would love to invite you for an official interview for the following position:</p>
       
       <div class="job-card">
         <div class="job-title-row">{job_title}</div>
@@ -269,9 +269,9 @@ def send_candidate_invite_email(
         {location_row}
         {website_row}
       </div>
-
-      <p class="intro-text">We believe your skills align exceptionally well with our team's vision. Please click the button below to coordinate a brief introductory call later this week:</p>
-
+ 
+      <p class="intro-text">To help us connect at a time that works best for you, please click the button below to access our scheduling portal and select a convenient time slot for a brief introductory call:</p>
+ 
       <div class="cta-section">
         <a href="{portal_url}" class="cta-button">Select Interview Time Slot</a>
       </div>
@@ -279,7 +279,7 @@ def send_candidate_invite_email(
       <div class="signature">
         <div class="signature-name">{recruiter_name}</div>
         <div class="signature-role">{recruiter_role}</div>
-        <div style="font-weight: 600; color: #4f46e5; margin-top: 4px;">{company_name}</div>
+        <div style="font-weight: 600; color: #a855f7; margin-top: 4px;">{company_name}</div>
       </div>
     </div>
     <div class="footer">
@@ -318,7 +318,7 @@ def send_candidate_invite_email(
     print("SENDING BRANDED CANDIDATE INTERVIEW INVITATION EMAIL:")
     print(f"To: {candidate_email}")
     print(f"From: {sender_email or 'mock_smtp@talentvector.com'}")
-    print(f"Subject: Interview Invitation: {job_title} at {company_name}")
+    print(f"Subject: Exclusive Interview Invitation: {job_title} | {company_name}")
     print(body_text)
     print("="*60 + "\n")
 
@@ -332,7 +332,7 @@ def send_candidate_invite_email(
         msg.add_alternative(body_html, subtype='html')
         
         # Configure deliverability headers to prevent spam classification
-        msg['Subject'] = f"Interview Invitation: {job_title} at {company_name}"
+        msg['Subject'] = f"Exclusive Interview Invitation: {job_title} | {company_name}"
         msg['From'] = f"{recruiter_name} via Talent Vector <{sender_email}>"
         msg['To'] = candidate_email
         msg['Message-ID'] = make_msgid(domain=sender_email.split('@')[-1])

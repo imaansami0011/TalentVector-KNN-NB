@@ -34,8 +34,6 @@ function calculateCosineSimilarity(jdSkills, candidateSkills) {
   return dotProduct / (magJd * magCand)
 }
 
-const DEMO_JD_SKILLS = ["React", "TypeScript", "Node.js", "Docker", "TailwindCSS"]
-const DEMO_ALL_SKILLS = ["React", "TypeScript", "Node.js", "Docker", "TailwindCSS", "Python", "GraphQL", "AWS", "SQL"]
 
 // Explicit color mapper maps string identities to compile-safe Tailwind classes
 const getCardColorClasses = (color) => {
@@ -58,6 +56,16 @@ const getCardColorClasses = (color) => {
       }
   }
 }
+
+// Demo data for the interactive skill-matching playground
+const DEMO_JD_SKILLS = [
+  "React", "TypeScript", "Node.js", "MongoDB", "REST APIs", "Git", "Docker", "CSS"
+]
+
+const DEMO_ALL_SKILLS = [
+  "React", "TypeScript", "Node.js", "MongoDB", "REST APIs", "Git", "Docker", "CSS",
+  "Python", "Vue.js", "Angular", "GraphQL", "PostgreSQL", "Redis", "Kubernetes", "AWS"
+]
 
 function LandingPage() {
   const [selectedSkills, setSelectedSkills] = React.useState(["React", "TypeScript", "CSS"])
@@ -300,8 +308,8 @@ function LandingPage() {
                       key={skill}
                       onClick={() => toggleSkill(skill)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${isSelected
-                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20 border border-indigo-500/30"
-                          : "bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 text-slate-400 hover:text-slate-300"
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20 border border-indigo-500/30"
+                        : "bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800 text-slate-400 hover:text-slate-300"
                         }`}
                     >
                       {isSelected ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}

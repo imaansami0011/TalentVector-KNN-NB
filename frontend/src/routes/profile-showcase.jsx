@@ -26,7 +26,8 @@ import {
   Target,
   BarChart3,
   ChevronRight,
-  X
+  X,
+  AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from '../components/ui/button';
@@ -49,6 +50,65 @@ function ProfileShowcase() {
 
   const [profile, setProfile] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedJdId, setSelectedJdId] = useState("");
+  const [jds, setJds] = useState([]);
+  const [isLoadingJds, setIsLoadingJds] = useState(false);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+
+  const fetchJds = async () => {
+    setIsLoadingJds(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jds`, {
+        headers: {
+          "x-user-id": localStorage.getItem("user_id") ?? "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setJds(data);
+        if (data.length > 0) {
+          setSelectedJdId(data[0].id);
+        }
+      } else {
+        toast.error("Failed to fetch job pipelines.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error loading job pipelines.");
+    } finally {
+      setIsLoadingJds(false);
+    }
+  };
+
+  const handleSendInvite = async () => {
+    setIsSendingInvite(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${profile.id || profile._id}/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": localStorage.getItem("user_id") ?? "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
+        body: JSON.stringify({ jd_id: selectedJdId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || "Invitation email sent successfully!");
+        setShowInviteModal(false);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.detail || "Failed to send invitation");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error sending invitation.");
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
 
   const emailSubject = useMemo(() => {
     if (!profile) return '';
@@ -242,9 +302,9 @@ Best regards,
           <div className="flex items-center justify-between">
             <button 
               onClick={() => navigate({ to: ".." })} 
-              className="group flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors cursor-pointer"
+              className="group flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs md:text-sm font-extrabold uppercase tracking-wider text-white border border-white/10 w-fit hover:shadow-md cursor-pointer transition-all duration-300"
             >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <ArrowLeft className="w-4.5 h-4.5 text-white/80 group-hover:-translate-x-0.5 transition-transform" />
               <span>Back</span>
             </button>
             <button 
@@ -646,6 +706,27 @@ Best regards,
             {/* Choose Platform Option list */}
             <div className="flex flex-col gap-3">
               <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Choose platform</span>
+
+              {/* Automated Send Invite */}
+              <button 
+                onClick={() => {
+                  setShowContactModal(false);
+                  fetchJds();
+                  setShowInviteModal(true);
+                }}
+                className="flex items-center justify-between p-4 bg-violet-50/40 hover:bg-violet-50/80 border border-violet-100 hover:border-violet-200 rounded-2xl transition-all duration-300 group cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-500 group-hover:scale-105 transition-transform">
+                    <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">Send Email for Interview</h4>
+                    <p className="text-[9px] text-slate-400 font-medium">Automated & branded invitation email</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
               
               {/* Gmail Web */}
               <a 
@@ -688,6 +769,145 @@ Best regards,
               </button>
 
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Automated Invite Modal */}
+      {showInviteModal && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => {
+              if (!isSendingInvite) setShowInviteModal(false)
+            }}
+          />
+          
+          {/* Modal Container */}
+          <div className="relative bg-white/95 backdrop-blur-lg rounded-3xl p-6 md:p-8 shadow-[0_20px_70px_rgba(15,23,42,0.15)] border border-slate-200/80 w-full max-w-lg animate-in zoom-in-95 fade-in duration-300 flex flex-col gap-6 text-left">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white shadow-md">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-extrabold text-slate-900 uppercase tracking-tight">
+                    Send Email for Interview
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    Automated & Branded Invitation
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  if (!isSendingInvite) setShowInviteModal(false)
+                }}
+                disabled={isSendingInvite}
+                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 hover:text-slate-600 cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Candidate Details Mini Panel */}
+            <div className="bg-slate-50/80 border border-slate-200/50 rounded-2xl p-4 space-y-3 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider w-20">Candidate:</span>
+                <span className="text-slate-800 font-bold">{profile.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider w-20">Email:</span>
+                <span className="text-slate-800 font-bold select-all truncate">{profile.email}</span>
+              </div>
+            </div>
+
+            {/* Job Selection Dropdown */}
+            <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
+                Select Job Description Pipeline
+              </label>
+              
+              {isLoadingJds ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span>Loading job pipelines...</span>
+                </div>
+              ) : jds && jds.length > 0 ? (
+                <div className="relative">
+                  <select
+                    value={selectedJdId}
+                    onChange={(e) => setSelectedJdId(e.target.value)}
+                    disabled={isSendingInvite}
+                    className="w-full bg-white border border-slate-200 rounded-2xl p-3.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>-- Choose a Pipeline --</option>
+                    {jds.map((jd) => (
+                      <option key={jd.id} value={jd.id}>
+                        {jd.title} ({jd.company_details?.company_name || "Company"})
+                      </option>
+                    ))}
+                  </select>
+                  {/* Custom Arrow Icon */}
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
+                    <ChevronRight className="w-4 h-4 rotate-90" />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <div>
+                    <p className="font-bold">No Job Descriptions Found</p>
+                    <p className="text-[10px] text-amber-500 mt-0.5">You must create a Job Description first to invite candidates to a pipeline.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Theme & Preview Info */}
+            <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100/50 rounded-2xl p-4 space-y-2">
+              <h4 className="text-[10px] font-black text-violet-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                Enhanced Premium Template Included
+              </h4>
+              <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                We will send an elegantly formatted email featuring your company's profile theme (violet-to-rose header gradients, custom scheduling portal link, and styled signature) to invite {profile.name} for an interview.
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 justify-end mt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowInviteModal(false)}
+                disabled={isSendingInvite}
+                className="rounded-2xl h-11 px-5 text-xs font-bold uppercase tracking-wider border-slate-250 hover:bg-slate-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendInvite}
+                disabled={!selectedJdId || isSendingInvite}
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-violet-500/10 rounded-2xl h-11 px-6 text-xs font-black uppercase tracking-wider flex items-center gap-2"
+              >
+                {isSendingInvite ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    <span>Send Automated Invite</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            
           </div>
         </div>,
         document.body

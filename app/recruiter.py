@@ -258,18 +258,20 @@ async def save_finalized_jd(
     jd_id = str(result.inserted_id)
 
     # Automatically rank candidates and perform initial screening session
+    user_email = current_user.get("email")
+    visibility_or = [{"visibility": "public"}, {"owner_id": x_user_id}]
+    if user_email:
+        visibility_or.append({"email": user_email})
+
     query = {
-        "$or": [
-            {"visibility": "public"},
-            {"owner_id": x_user_id}
-        ]
+        "$or": visibility_or
     }
     sector = doc.get("sector")
     if sector:
         escaped_sector = re.escape(sector)
         query = {
             "$and": [
-                {"$or": [{"visibility": "public"}, {"owner_id": x_user_id}]},
+                {"$or": visibility_or},
                 {"$or": [
                     {"sector": {"$regex": f"^{escaped_sector}$", "$options": "i"}},
                     {"domain": {"$regex": f"^{escaped_sector}$", "$options": "i"}}
@@ -280,7 +282,7 @@ async def save_finalized_jd(
     db_candidates = await cursor.to_list(length=100)
     
     if not db_candidates:
-        cursor = candidate_profiles_collection.find({"visibility": "public"})
+        cursor = candidate_profiles_collection.find({"$or": visibility_or})
         db_candidates = await cursor.to_list(length=100)
         
     from .ranker import manual_ranker
@@ -324,18 +326,22 @@ async def save_finalized_jd(
         recruiter_name = user.get("name", "Hiring Team") if user else "Hiring Team"
         recruiter_role = user.get("role_title", "Recruiter") if user else "Recruiter"
         
-        background_tasks.add_task(
-            send_campaign_invitations,
-            matches,
-            auto_invite_count,
-            doc.get("title", "the role"),
-            company_details,
-            recruiter_name,
-            recruiter_role
-        )
+        # Only invite candidates scoring >= 75%
+        eligible_matches = [m for m in matches if m.get("match_score_percentage", 0) >= 75]
         
-        for m in matches[:auto_invite_count]:
-            m["status"] = "shortlisted"
+        if eligible_matches:
+            background_tasks.add_task(
+                send_campaign_invitations,
+                eligible_matches,
+                auto_invite_count,
+                doc.get("title", "the role"),
+                company_details,
+                recruiter_name,
+                recruiter_role
+            )
+            
+            for m in eligible_matches[:auto_invite_count]:
+                m["status"] = "shortlisted"
             
     # Save the screening session to DB
     screening_doc = {
@@ -534,14 +540,21 @@ async def search_global_candidates(
         categorized, _ = manual_extract_categorized_skills(jd_text)
         active_jd_sector = detect_domain(categorized)
     
-    # Query database for candidates matching visibility == "public" and sector == {active_jd_sector}
+    # Query database for candidates matching visibility == "public" (or owned email) and sector == {active_jd_sector}
     # Match sector or domain fields case-insensitively
+    user_email = current_user.get("email")
+    visibility_or = [{"visibility": "public"}]
+    if user_email:
+        visibility_or.append({"email": user_email})
+
     escaped_sector = re.escape(active_jd_sector)
     query = {
-        "visibility": "public",
-        "$or": [
-            {"sector": {"$regex": f"^{escaped_sector}$", "$options": "i"}},
-            {"domain": {"$regex": f"^{escaped_sector}$", "$options": "i"}}
+        "$and": [
+            {"$or": visibility_or},
+            {"$or": [
+                {"sector": {"$regex": f"^{escaped_sector}$", "$options": "i"}},
+                {"domain": {"$regex": f"^{escaped_sector}$", "$options": "i"}}
+            ]}
         ]
     }
     
@@ -550,7 +563,7 @@ async def search_global_candidates(
     
     # Fallback to general search if no candidate profile matches the specific sector
     if not global_candidates:
-        cursor = candidate_profiles_collection.find({"visibility": "public"})
+        cursor = candidate_profiles_collection.find({"$or": visibility_or})
         global_candidates = await cursor.to_list(length=1000)
         
     candidate_list = []
@@ -678,11 +691,13 @@ async def get_candidates(
     current_user: dict = Depends(get_current_recruiter)
 ):
     x_user_id = str(current_user["_id"])
+    user_email = current_user.get("email")
+    visibility_or = [{"visibility": "public"}, {"owner_id": x_user_id}]
+    if user_email:
+        visibility_or.append({"email": user_email})
+
     query = {
-        "$or": [
-            {"visibility": "public"},
-            {"owner_id": x_user_id}
-        ]
+        "$or": visibility_or
     }
     
     # Merge text search if present
@@ -691,7 +706,7 @@ async def get_candidates(
         # Check if query contains name, title, or skills
         query = {
             "$and": [
-                {"$or": [{"visibility": "public"}, {"owner_id": x_user_id}]},
+                {"$or": visibility_or},
                 {"$or": [
                     {"name": regex_query},
                     {"title": regex_query},
@@ -761,13 +776,12 @@ async def get_candidates(
 @router.get("/candidates/filters")
 async def get_candidate_filters(current_user: dict = Depends(get_current_recruiter)):
     x_user_id = str(current_user["_id"])
+    user_email = current_user.get("email")
     """Return distinct domains, statuses, and total count for filter UI."""
-    query = {
-        "$or": [
-            {"visibility": "public"},
-            {"owner_id": x_user_id}
-        ]
-    }
+    visibility_or = [{"visibility": "public"}, {"owner_id": x_user_id}]
+    if user_email:
+        visibility_or.append({"email": user_email})
+    query = {"$or": visibility_or}
     
     domains_1 = await candidate_profiles_collection.distinct("domain", query)
     domains_2 = await candidate_profiles_collection.distinct("sector", query)
@@ -901,20 +915,22 @@ async def get_recruiter_stats(current_user: dict = Depends(get_current_recruiter
             
     avg_match = round(total_score / score_count) if score_count > 0 else 78
     
+    user_email = current_user.get("email")
+    visibility_or = [{"visibility": "public"}, {"owner_id": x_user_id}]
+    if user_email:
+        visibility_or.append({"email": user_email})
+
     shortlisted_count = await candidate_profiles_collection.count_documents({
         "status": "shortlisted",
-        "$or": [
-            {"visibility": "public"},
-            {"owner_id": x_user_id}
-        ]
+        "$or": visibility_or
     })
     
     pipeline = {
-        "new": await candidate_profiles_collection.count_documents({"status": "new", "$or": [{"visibility": "public"}, {"owner_id": x_user_id}]}),
-        "review": await candidate_profiles_collection.count_documents({"status": "review", "$or": [{"visibility": "public"}, {"owner_id": x_user_id}]}),
-        "rejected": await candidate_profiles_collection.count_documents({"status": "rejected", "$or": [{"visibility": "public"}, {"owner_id": x_user_id}]}),
+        "new": await candidate_profiles_collection.count_documents({"status": "new", "$or": visibility_or}),
+        "review": await candidate_profiles_collection.count_documents({"status": "review", "$or": visibility_or}),
+        "rejected": await candidate_profiles_collection.count_documents({"status": "rejected", "$or": visibility_or}),
         "shortlisted": shortlisted_count,
-        "hired": await candidate_profiles_collection.count_documents({"status": "hired", "$or": [{"visibility": "public"}, {"owner_id": x_user_id}]})
+        "hired": await candidate_profiles_collection.count_documents({"status": "hired", "$or": visibility_or})
     }
     
     return {
@@ -967,12 +983,11 @@ async def get_job_results(job_id: str, current_user: dict = Depends(get_current_
         
     if not candidates:
         mode = "global"
-        query = {
-            "$or": [
-                {"visibility": "public"},
-                {"owner_id": x_user_id}
-            ]
-        }
+        user_email = current_user.get("email")
+        visibility_or = [{"visibility": "public"}, {"owner_id": x_user_id}]
+        if user_email:
+            visibility_or.append({"email": user_email})
+        query = {"$or": visibility_or}
         cursor = candidate_profiles_collection.find(query)
         db_candidates = await cursor.to_list(length=100)
         

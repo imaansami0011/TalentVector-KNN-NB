@@ -40,6 +40,8 @@ function CandidatesPage() {
   const navigate = useNavigate()
   const { q, domain, status, jd_id } = Route.useSearch()
   const userId = localStorage.getItem("user_id")
+  const userEmail = localStorage.getItem("user_email") || (userId?.includes("@") ? userId : "")
+  const userPicture = localStorage.getItem("user_picture")
   const [localSearch, setLocalSearch] = React.useState(q || "")
 
   // Debounce search input
@@ -346,7 +348,8 @@ function CandidatesPage() {
               const id = cand.id || cand._id || ""
               const name = cand.name || "Unknown Candidate"
               const title = cand.title || cand.designation || "Candidate"
-              const avatar = cand.avatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(name)}`
+              const isSelf = cand.email && userEmail && cand.email.toLowerCase() === userEmail.toLowerCase()
+              const avatar = isSelf && userPicture ? userPicture : (cand.avatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(name)}`)
               const location = cand.location || "Not specified"
               const experience = cand.experience ?? cand.experience_years ?? cand.years_of_experience ?? 0
               const skills = cand.skills || cand.skills_extracted || []
@@ -385,8 +388,13 @@ function CandidatesPage() {
                             <AvatarFallback className="text-sm font-bold">{name[0]}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <h3 className="text-base font-black text-slate-900 leading-tight truncate">
-                              {name}
+                            <h3 className="text-base font-black text-slate-900 leading-tight truncate flex items-center gap-1.5">
+                              <span>{name}</span>
+                              {isSelf && (
+                                <span className="bg-primary/10 text-primary border border-primary/20 font-black uppercase tracking-widest text-[8px] px-1.5 py-0.5 rounded-md shrink-0">
+                                  You
+                                </span>
+                              )}
                             </h3>
                             <p className="text-xs text-slate-550 font-semibold mt-0.5 truncate">{title}</p>
                           </div>

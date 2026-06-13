@@ -32,16 +32,73 @@ import {
 
 export const Route = createFileRoute("/candidates/$id")({
   validateSearch: (search) => ({
-    jd_id: search.jd_id || "",
+    jd_id: search.jd_id || undefined,
+    from: search.from || undefined,
   }),
   component: CandidateDetailPage,
 })
 
 function CandidateDetailPage() {
-  const { id } = useParams({ from: "/candidates/$id" })
-  const { jd_id } = Route.useSearch()
+  const { id } = Route.useParams()
+  const { jd_id, from } = Route.useSearch()
   const userId = localStorage.getItem("user_id")
   const queryClient = useQueryClient()
+
+  const [showContactModal, setShowContactModal] = React.useState(false)
+  const [showInviteModal, setShowInviteModal] = React.useState(false)
+  const [selectedJdId, setSelectedJdId] = React.useState(jd_id || "")
+
+  React.useEffect(() => {
+    if (jd_id) {
+      setSelectedJdId(jd_id)
+    }
+  }, [jd_id])
+
+  // Fetch recruiter's JDs for the dropdown selection
+  const { data: jds, isLoading: isLoadingJds } = useQuery({
+    queryKey: ["recruiterJds"],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/jds`, {
+        headers: {
+          "x-user-id": userId ?? "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        }
+      })
+      if (!res.ok) throw new Error("Failed to fetch jobs")
+      return res.json()
+    },
+    enabled: !!userId,
+  })
+
+  // Invite candidate mutation
+  const inviteMutation = useMutation({
+    mutationFn: async (targetJdId) => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/recruiter/candidates/${id}/invite`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId ?? "",
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+        },
+        body: JSON.stringify({ jd_id: targetJdId }),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.detail || "Failed to send invitation")
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["candidateDetails", id] })
+      queryClient.invalidateQueries({ queryKey: ["candidatesList"] })
+      queryClient.invalidateQueries({ queryKey: ["recruiterStats"] })
+      toast.success(data.message || "Invitation email sent successfully!")
+      setShowInviteModal(false)
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send invitation")
+    }
+  })
 
   // Fetch candidate details
   const { data: cand, isLoading } = useQuery({
@@ -88,6 +145,36 @@ function CandidateDetailPage() {
     }
   })
 
+  const name = cand?.name || "Unknown Candidate"
+  const skills = cand?.skills || cand?.skills_extracted || []
+
+  const emailSubject = React.useMemo(() => {
+    if (!cand) return ""
+    const sector = cand.domain || cand.sector || 'Technology'
+    return `Exciting Opportunity – ${sector} Role`
+  }, [cand])
+
+  const emailBody = React.useMemo(() => {
+    if (!cand) return ""
+    const candidateName = name || 'there'
+    const sector = cand.domain || cand.sector || 'Technology'
+    const topSkills = skills.slice(0, 3).join(', ')
+    return `Hi ${candidateName},
+
+I came across your profile on Talent Vector and was really impressed by your background in ${sector}${topSkills ? ` and your expertise in ${topSkills}` : ''}.
+
+We have an exciting opportunity that I believe aligns well with your experience and skill set. I'd love to schedule a quick call to discuss this further.
+
+Would you be available for a brief conversation this week?
+
+Looking forward to hearing from you.
+
+Best regards,
+[Your Name]
+[Your Title]
+[Company Name]`
+  }, [cand, name, skills])
+
   if (isLoading) {
     return (
       <AppShell>
@@ -113,7 +200,6 @@ function CandidateDetailPage() {
   }
 
   // Normalize fields with safe fallbacks
-  const name = cand.name || "Unknown Candidate"
   const title = cand.title || cand.designation || "Candidate"
   const email = cand.email || "Not Found"
   const phone = cand.phone || "Not Found"
@@ -123,7 +209,6 @@ function CandidateDetailPage() {
   const score = cand.score ?? (cand.match_score_percentage != null ? Math.round(cand.match_score_percentage) : null)
   const skillMatch = cand.skillMatch ?? cand.skill_match ?? (score != null ? Math.round(score * 0.85) : null)
   const expMatch = cand.expMatch ?? cand.exp_match ?? (score != null ? Math.round(score * 1.1) : null)
-  const skills = cand.skills || cand.skills_extracted || []
   const experiences = cand.experiences || []
   const education = cand.education || []
 
@@ -145,33 +230,6 @@ function CandidateDetailPage() {
     updateStatusMutation.mutate(nextStatus)
   }
 
-  const [showContactModal, setShowContactModal] = React.useState(false)
-
-  const emailSubject = React.useMemo(() => {
-    const sector = cand.domain || cand.sector || 'Technology'
-    return `Exciting Opportunity – ${sector} Role`
-  }, [cand])
-
-  const emailBody = React.useMemo(() => {
-    const candidateName = name || 'there'
-    const sector = cand.domain || cand.sector || 'Technology'
-    const topSkills = skills.slice(0, 3).join(', ')
-    return `Hi ${candidateName},
-
-I came across your profile on Talent Vector and was really impressed by your background in ${sector}${topSkills ? ` and your expertise in ${topSkills}` : ''}.
-
-We have an exciting opportunity that I believe aligns well with your experience and skill set. I'd love to schedule a quick call to discuss this further.
-
-Would you be available for a brief conversation this week?
-
-Looking forward to hearing from you.
-
-Best regards,
-[Your Name]
-[Your Title]
-[Company Name]`
-  }, [cand, name, skills])
-
   const handleCopyDraft = () => {
     const textToCopy = `To: ${email}\nSubject: ${emailSubject}\n\n${emailBody}`
     navigator.clipboard.writeText(textToCopy)
@@ -184,11 +242,12 @@ Best regards,
         
         {/* Back Link */}
         <Link 
-          to="/candidates" 
-          className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors"
+          to={from || "/candidates"} 
+          search={from ? undefined : { jd_id: jd_id || undefined }}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-xs md:text-sm font-extrabold uppercase tracking-wider text-slate-700 hover:text-slate-900 transition-all border border-slate-200/50 w-fit hover:shadow-sm group"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back to candidates</span>
+          <ArrowLeft className="w-4.5 h-4.5 text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+          <span>{from ? "Back to Match Results" : "Back to candidates"}</span>
         </Link>
 
         {/* Profile Header Card */}
@@ -269,6 +328,19 @@ Best regards,
             <Button variant="outline" size="sm" onClick={() => setShowContactModal(true)} disabled={isPending}>
               <Mail className="w-3.5 h-3.5 mr-1" />
               Contact
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (jd_id) setSelectedJdId(jd_id)
+                setShowInviteModal(true)
+              }} 
+              disabled={isPending}
+              className="border-violet-300 hover:border-violet-400 text-violet-600 hover:bg-violet-50 hover:text-violet-700 transition-all font-bold duration-300"
+            >
+              <Sparkles className="w-3.5 h-3.5 mr-1 text-violet-500 animate-pulse" />
+              Send Email for Interview
             </Button>
             <Button 
               variant={activeStatus === "rejected" ? "destructive" : "outline"} 
@@ -512,6 +584,26 @@ Best regards,
             {/* Choose Platform Option list */}
             <div className="flex flex-col gap-3">
               <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">Choose platform</span>
+
+              {/* Automated Send Invite */}
+              <button 
+                onClick={() => {
+                  setShowContactModal(false)
+                  setShowInviteModal(true)
+                }}
+                className="flex items-center justify-between p-4 bg-violet-50/40 hover:bg-violet-50/80 border border-violet-100 hover:border-violet-200 rounded-2xl transition-all duration-300 group cursor-pointer text-left w-full"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-500 group-hover:scale-105 transition-transform">
+                    <Sparkles className="w-4 h-4 text-violet-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-slate-800 tracking-wider">Send Email for Interview</h4>
+                    <p className="text-[9px] text-slate-400 font-medium">Automated & branded invitation email</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
               
               {/* Gmail Web */}
               <a 
@@ -554,6 +646,145 @@ Best regards,
               </button>
 
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Automated Invite Modal */}
+      {showInviteModal && createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300"
+            onClick={() => {
+              if (!inviteMutation.isPending) setShowInviteModal(false)
+            }}
+          />
+          
+          {/* Modal Container */}
+          <div className="relative bg-white/95 backdrop-blur-lg rounded-3xl p-6 md:p-8 shadow-[0_20px_70px_rgba(15,23,42,0.15)] border border-slate-200/80 w-full max-w-lg animate-in zoom-in-95 fade-in duration-300 flex flex-col gap-6 text-left">
+            
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white shadow-md">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-extrabold text-slate-900 uppercase tracking-tight">
+                    Send Email for Interview
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    Automated & Branded Invitation
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  if (!inviteMutation.isPending) setShowInviteModal(false)
+                }}
+                disabled={inviteMutation.isPending}
+                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 hover:text-slate-600 cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Candidate Details Mini Panel */}
+            <div className="bg-slate-50/80 border border-slate-200/50 rounded-2xl p-4 space-y-3 text-xs font-semibold text-slate-600">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider w-20">Candidate:</span>
+                <span className="text-slate-800 font-bold">{name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider w-20">Email:</span>
+                <span className="text-slate-800 font-bold select-all truncate">{email}</span>
+              </div>
+            </div>
+
+            {/* Job Selection Dropdown */}
+            <div className="space-y-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400">
+                Select Job Description Pipeline
+              </label>
+              
+              {isLoadingJds ? (
+                <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span>Loading job pipelines...</span>
+                </div>
+              ) : jds && jds.length > 0 ? (
+                <div className="relative">
+                  <select
+                    value={selectedJdId}
+                    onChange={(e) => setSelectedJdId(e.target.value)}
+                    disabled={inviteMutation.isPending}
+                    className="w-full bg-white border border-slate-200 rounded-2xl p-3.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>-- Choose a Pipeline --</option>
+                    {jds.map((jd) => (
+                      <option key={jd.id} value={jd.id}>
+                        {jd.title} ({jd.company_details?.company_name || "Company"})
+                      </option>
+                    ))}
+                  </select>
+                  {/* Custom Arrow Icon */}
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400">
+                    <ChevronRight className="w-4 h-4 rotate-90" />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-100 rounded-2xl p-4 flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <div>
+                    <p className="font-bold">No Job Descriptions Found</p>
+                    <p className="text-[10px] text-amber-500 mt-0.5">You must create a Job Description first to invite candidates to a pipeline.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Theme & Preview Info */}
+            <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100/50 rounded-2xl p-4 space-y-2">
+              <h4 className="text-[10px] font-black text-violet-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                Enhanced Premium Template Included
+              </h4>
+              <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                We will send an elegantly formatted email featuring your company's profile theme (violet-to-rose header gradients, custom scheduling portal link, and styled signature) to invite {name} for an interview.
+              </p>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 justify-end mt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowInviteModal(false)}
+                disabled={inviteMutation.isPending}
+                className="rounded-2xl h-11 px-5 text-xs font-bold uppercase tracking-wider border-slate-250 hover:bg-slate-50"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => inviteMutation.mutate(selectedJdId)}
+                disabled={!selectedJdId || inviteMutation.isPending}
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-md shadow-violet-500/10 rounded-2xl h-11 px-6 text-xs font-black uppercase tracking-wider flex items-center gap-2"
+              >
+                {inviteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-4 h-4" />
+                    <span>Send Automated Invite</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            
           </div>
         </div>,
         document.body

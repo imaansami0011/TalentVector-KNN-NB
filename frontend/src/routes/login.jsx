@@ -94,6 +94,27 @@ function IdentityGateway() {
       localStorage.setItem("user_role", data.role || (role === "hr" ? "recruiter" : "candidate"))
       localStorage.setItem("user_name", loginEmail.split("@")[0])
 
+      // Fetch avatar from candidate profile database
+      let dbAvatar = null
+      try {
+        const profileRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile?email=${encodeURIComponent(loginEmail)}`, {
+          headers: { "Authorization": `Bearer ${data.access_token}` }
+        })
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          if (profileData && profileData.avatar) {
+            dbAvatar = profileData.avatar
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch avatar from profile:", err)
+      }
+
+      localStorage.setItem(
+        "user_picture",
+        dbAvatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(loginEmail)}`
+      )
+
       toast.success("Logged in successfully!")
       navigate({ to: "/onboarding" })
     } catch (err) {
@@ -134,7 +155,7 @@ function IdentityGateway() {
     await performLogin(email, password)
   }
 
-  const performGoogleLogin = async (googleEmail, googleName, googleToken, createMissing = false) => {
+  const performGoogleLogin = async (googleEmail, googleName, googleToken, createMissing = false, googlePicture = null) => {
     setGoogleLoading(true)
     setStep("google-signin")
     try {
@@ -147,7 +168,8 @@ function IdentityGateway() {
           email: googleEmail,
           name: googleName || "Google User",
           role: role === "hr" ? "recruiter" : "candidate",
-          create_missing: createMissing
+          create_missing: createMissing,
+          picture: googlePicture
         }),
       })
 
@@ -178,7 +200,27 @@ function IdentityGateway() {
       localStorage.setItem("user_name", googleName || "Google User")
       localStorage.setItem("user_id", authData.user_id || googleEmail)
       localStorage.setItem("user_email", googleEmail)
-      localStorage.setItem("user_picture", `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(googleEmail)}`)
+
+      // Fetch avatar from candidate profile database
+      let dbAvatar = null
+      try {
+        const profileRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8000"}/candidate/profile?email=${encodeURIComponent(googleEmail)}`, {
+          headers: { "Authorization": `Bearer ${authData.access_token}` }
+        })
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          if (profileData && profileData.avatar) {
+            dbAvatar = profileData.avatar
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch avatar from profile:", err)
+      }
+
+      localStorage.setItem(
+        "user_picture",
+        googlePicture || dbAvatar || `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(googleEmail)}`
+      )
       localStorage.setItem("user_role", authData.role || (role === "hr" ? "recruiter" : "candidate"))
 
       toast.success(`Google Signed in: ${googleEmail}`)
@@ -204,7 +246,7 @@ function IdentityGateway() {
         throw new Error("Failed to fetch Google profile info")
       }
       const profile = await res.json()
-      await performGoogleLogin(profile.email, profile.name || profile.given_name, googleToken, false)
+      await performGoogleLogin(profile.email, profile.name || profile.given_name, googleToken, false, profile.picture || null)
     } catch (error) {
       console.error(error)
       toast.error(error.message || "Google Sign-In failed.")
@@ -647,7 +689,7 @@ function IdentityGateway() {
                   if (info.type === "password") {
                     await performLogin(info.email, info.password, true)
                   } else {
-                    await performGoogleLogin(info.email, info.name, info.googleToken, true)
+                    await performGoogleLogin(info.email, info.name, info.googleToken, true, info.googlePicture || null)
                   }
                 }}
                 className="flex-grow h-10 font-bold text-xs uppercase tracking-wider shadow-md shadow-primary/10 rounded-xl bg-primary text-white hover:bg-primary/95 transition-all cursor-pointer"

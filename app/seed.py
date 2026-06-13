@@ -549,10 +549,10 @@ async def seed_15_mock_candidate_accounts():
     from .database import users_collection, candidate_profiles_collection
     from passlib.context import CryptContext
     
-    # Check if they are already present by searching for the first email
-    existing = await users_collection.find_one({"email": "muhammad.faisal@example.com"})
+    # Check if the latest batch of mock accounts (including Lahore MERN candidates) is already seeded
+    existing = await users_collection.find_one({"email": "usman.butt@example.com"})
     if existing:
-        print("15 mock candidate accounts already seeded in database.")
+        print("Mock candidate accounts already seeded (latest batch present). Skipping.")
         return
         
     pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -980,6 +980,66 @@ async def seed_15_mock_candidate_accounts():
             ]
         },
         {
+            "name": "Shahzaib Raza",
+            "email": "shahzaib.raza@example.com",
+            "phone": "+92-311-5647382",
+            "location": "Lahore, Punjab",
+            "sector": "Web Development",
+            "total_experience": 3.5,
+            "skills": ["React.js", "Node.js", "MongoDB", "Express.js", "JavaScript", "TypeScript", "REST APIs", "JWT", "Redux", "Git", "Docker", "HTML", "CSS"],
+            "education": [
+                {
+                    "degree": "Bachelor of Science in Computer Science",
+                    "school": "FAST NUCES, Lahore",
+                    "year": "2021-2025"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Full Stack MERN Developer",
+                    "company": "Arbisoft",
+                    "period": "2025 - Present",
+                    "summary": "Developed end-to-end web applications using the MERN stack. Implemented REST APIs with Node.js/Express.js and built dynamic React.js frontends with Redux state management. Containerized services using Docker."
+                },
+                {
+                    "role": "Junior MERN Developer",
+                    "company": "Devsinc",
+                    "period": "2023 - 2025",
+                    "summary": "Built scalable Node.js backend APIs and integrated MongoDB for data persistence. Collaborated on React component libraries and implemented JWT-based authentication."
+                }
+            ]
+        },
+        {
+            "name": "Nida Chaudhry",
+            "email": "nida.chaudhry@example.com",
+            "phone": "+92-315-8291047",
+            "location": "Lahore, Punjab",
+            "sector": "Web Development",
+            "total_experience": 4.0,
+            "skills": ["React.js", "Node.js", "MongoDB", "Express.js", "Next.js", "TypeScript", "GraphQL", "REST APIs", "Tailwind CSS", "Git", "AWS S3", "Socket.io"],
+            "education": [
+                {
+                    "degree": "Bachelor of Science in Software Engineering",
+                    "school": "UET Lahore",
+                    "year": "2020-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Senior MERN Stack Engineer",
+                    "company": "10Pearls",
+                    "period": "2024 - Present",
+                    "summary": "Architected real-time web platforms using Socket.io and MERN stack. Led frontend development with Next.js and React.js, integrated GraphQL APIs, and deployed file storage pipelines on AWS S3."
+                },
+                {
+                    "role": "Full Stack Developer",
+                    "company": "Folio3",
+                    "period": "2022 - 2024",
+                    "summary": "Developed full-stack features across SaaS platforms using React.js and Express.js. Managed MongoDB schema design and built reusable UI components with Tailwind CSS."
+                }
+            ]
+        },
+        {
             "name": "Hassan Qureshi",
             "email": "hassan.qureshi@example.com",
             "phone": "+92-308-4567890",
@@ -1008,8 +1068,629 @@ async def seed_15_mock_candidate_accounts():
                     "summary": "Wrote API integrations and maintained unit tests."
                 }
             ]
+        },
+
+        # ── Finance & Accounting ─────────────────────────────────────────────
+        {
+            "name": "Kamran Mirza",
+            "email": "kamran.mirza@example.com",
+            "phone": "+92-321-4056789",
+            "location": "Karachi, Sindh",
+            "sector": "Finance & Accounting",
+            "total_experience": 6.0,
+            "skills": ["Financial Reporting", "IFRS", "GAAP", "SAP FICO", "Auditing", "Taxation", "Budgeting", "Forecasting", "Accounts Payable", "ACCA"],
+            "education": [
+                {
+                    "degree": "ACCA (Association of Chartered Certified Accountants)",
+                    "school": "ACCA Pakistan",
+                    "year": "2018-2022"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Senior Financial Analyst",
+                    "company": "EY Pakistan",
+                    "period": "2022 - Present",
+                    "summary": "Prepared consolidated financial statements under IFRS. Led external audit engagements across manufacturing and banking sectors. Managed taxation and compliance advisory for corporate clients."
+                },
+                {
+                    "role": "Audit Associate",
+                    "company": "KPMG Pakistan",
+                    "period": "2020 - 2022",
+                    "summary": "Conducted risk-based audits and prepared management letters. Assisted in financial due diligence for M&A transactions."
+                }
+            ]
+        },
+        {
+            "name": "Rabia Mirza",
+            "email": "rabia.mirza@example.com",
+            "phone": "+92-303-7821034",
+            "location": "Lahore, Punjab",
+            "sector": "Finance & Accounting",
+            "total_experience": 4.0,
+            "skills": ["Cost Accounting", "QuickBooks", "Budgeting", "Financial Analysis", "Investment Analysis", "Treasury", "CPA", "MS Excel", "Power BI", "Accounts Receivable"],
+            "education": [
+                {
+                    "degree": "Bachelor of Commerce (B.Com Honors)",
+                    "school": "Hailey College of Commerce, PU Lahore",
+                    "year": "2019-2023"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Finance Manager",
+                    "company": "Engro Corporation",
+                    "period": "2023 - Present",
+                    "summary": "Oversaw monthly cost accounting cycles, prepared variance analysis reports, and maintained treasury positions. Developed Power BI dashboards for executive financial reporting."
+                },
+                {
+                    "role": "Accounts Executive",
+                    "company": "Packages Limited",
+                    "period": "2021 - 2023",
+                    "summary": "Managed accounts receivable, reconciled bank statements, and assisted in annual budget preparation."
+                }
+            ]
+        },
+
+        # ── Marketing & Digital Media ─────────────────────────────────────────
+        {
+            "name": "Areeba Hassan",
+            "email": "areeba.hassan@example.com",
+            "phone": "+92-333-9012547",
+            "location": "Lahore, Punjab",
+            "sector": "Marketing & Digital Media",
+            "total_experience": 4.5,
+            "skills": ["SEO", "SEM", "Google Ads", "Facebook Ads", "Content Marketing", "HubSpot", "Google Analytics", "Brand Strategy", "Copywriting", "Email Marketing"],
+            "education": [
+                {
+                    "degree": "Bachelor of Science in Marketing",
+                    "school": "LUMS, Lahore",
+                    "year": "2019-2023"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Digital Marketing Manager",
+                    "company": "Zameen.com",
+                    "period": "2023 - Present",
+                    "summary": "Led performance marketing campaigns on Google and Meta platforms with monthly budgets exceeding PKR 5M. Improved organic SEO rankings by 40% through structured content strategy."
+                },
+                {
+                    "role": "SEO & Content Specialist",
+                    "company": "Markhor",
+                    "period": "2021 - 2023",
+                    "summary": "Created and optimized long-form content, managed social media calendars, and ran email campaigns using HubSpot."
+                }
+            ]
+        },
+        {
+            "name": "Talha Siddiqui",
+            "email": "talha.siddiqui@example.com",
+            "phone": "+92-312-6634501",
+            "location": "Karachi, Sindh",
+            "sector": "Marketing & Digital Media",
+            "total_experience": 3.0,
+            "skills": ["Social Media Marketing", "Influencer Marketing", "Market Research", "Campaign Management", "Canva", "Adobe Premiere", "Content Writing", "TikTok Ads", "Instagram Marketing"],
+            "education": [
+                {
+                    "degree": "Bachelor of Business Administration (Marketing)",
+                    "school": "IBA Karachi",
+                    "year": "2021-2025"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Brand Marketing Executive",
+                    "company": "Daraz Pakistan",
+                    "period": "2025 - Present",
+                    "summary": "Planned and executed influencer campaigns with 200+ creators. Managed TikTok and Instagram paid ad campaigns generating 5M+ impressions monthly."
+                },
+                {
+                    "role": "Social Media Intern",
+                    "company": "Jazz Pakistan",
+                    "period": "2023 - 2025",
+                    "summary": "Created engaging content calendars, monitored analytics, and assisted in campaign briefs for digital channels."
+                }
+            ]
+        },
+
+        # ── Human Resources ───────────────────────────────────────────────────
+        {
+            "name": "Sumbul Tariq",
+            "email": "sumbul.tariq@example.com",
+            "phone": "+92-301-2039871",
+            "location": "Islamabad, ICT",
+            "sector": "Human Resources",
+            "total_experience": 5.0,
+            "skills": ["Talent Acquisition", "Recruitment", "HRIS", "Performance Management", "Onboarding", "Employee Relations", "Compensation & Benefits", "ATS", "HR Analytics", "Labor Law"],
+            "education": [
+                {
+                    "degree": "Master of Business Administration (HR)",
+                    "school": "Quaid-e-Azam University",
+                    "year": "2019-2023"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Senior HR Business Partner",
+                    "company": "Systems Limited",
+                    "period": "2023 - Present",
+                    "summary": "Partnered with engineering and product teams to drive talent acquisition. Designed compensation structures and managed performance review cycles for 500+ employees."
+                },
+                {
+                    "role": "HR Executive",
+                    "company": "Netsol Technologies",
+                    "period": "2021 - 2023",
+                    "summary": "Handled end-to-end recruitment for technical roles, maintained HRIS data, and onboarded 60+ new hires annually."
+                }
+            ]
+        },
+        {
+            "name": "Fahad Mehmood",
+            "email": "fahad.mehmood@example.com",
+            "phone": "+92-345-7712293",
+            "location": "Lahore, Punjab",
+            "sector": "Human Resources",
+            "total_experience": 3.5,
+            "skills": ["Recruitment", "Talent Acquisition", "HR Business Partner", "Training & Development", "Succession Planning", "Payroll", "Zoho People", "SAP HR", "Organizational Development"],
+            "education": [
+                {
+                    "degree": "Bachelor of Business Administration (HRM)",
+                    "school": "University of Central Punjab",
+                    "year": "2020-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "HR Manager",
+                    "company": "TCS Pakistan",
+                    "period": "2024 - Present",
+                    "summary": "Managed full-cycle recruitment for corporate and operations roles. Designed training programs and quarterly succession reviews. Processed monthly payroll for 250+ staff."
+                },
+                {
+                    "role": "HR Officer",
+                    "company": "Servis Industries",
+                    "period": "2022 - 2024",
+                    "summary": "Coordinated hiring drives, maintained employee records, and delivered induction training."
+                }
+            ]
+        },
+
+        # ── Healthcare & Medicine ─────────────────────────────────────────────
+        {
+            "name": "Dr. Sara Baig",
+            "email": "sara.baig@example.com",
+            "phone": "+92-322-5519834",
+            "location": "Lahore, Punjab",
+            "sector": "Healthcare & Medicine",
+            "total_experience": 5.0,
+            "skills": ["Clinical Research", "Patient Care", "EMR/EHR", "Medical Writing", "Pharmacology", "ICD-10", "Healthcare Management", "HIPAA", "Public Health", "Telemedicine"],
+            "education": [
+                {
+                    "degree": "MBBS (Bachelor of Medicine and Surgery)",
+                    "school": "King Edward Medical University, Lahore",
+                    "year": "2017-2023"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Medical Officer",
+                    "company": "Mayo Hospital, Lahore",
+                    "period": "2023 - Present",
+                    "summary": "Managed patient consultations and rounds across internal medicine department. Maintained electronic health records and coordinated with specialist teams for complex cases."
+                },
+                {
+                    "role": "House Officer",
+                    "company": "Services Hospital, Lahore",
+                    "period": "2022 - 2023",
+                    "summary": "Completed rotations in Surgery, Medicine, Paediatrics, and Gynaecology. Assisted in over 300 clinical procedures."
+                }
+            ]
+        },
+        {
+            "name": "Noman Javed",
+            "email": "noman.javed@example.com",
+            "phone": "+92-311-8804422",
+            "location": "Karachi, Sindh",
+            "sector": "Healthcare & Medicine",
+            "total_experience": 4.0,
+            "skills": ["Medical Coding", "ICD-10", "CPT Coding", "Healthcare Administration", "Medical Billing", "Revenue Cycle Management", "EMR", "HIPAA", "Hospital Information Systems", "Excel"],
+            "education": [
+                {
+                    "degree": "Bachelor of Science in Health Information Management",
+                    "school": "Dow University of Health Sciences",
+                    "year": "2020-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Medical Billing & Coding Specialist",
+                    "company": "Agha Khan University Hospital",
+                    "period": "2024 - Present",
+                    "summary": "Assigned ICD-10 and CPT codes for outpatient and inpatient encounters. Managed insurance claims, resolved denials, and reduced claims rejection rate by 25%."
+                },
+                {
+                    "role": "Health Records Technician",
+                    "company": "National Medical Center",
+                    "period": "2022 - 2024",
+                    "summary": "Maintained patient health records, managed EHR data entry, and assisted in compliance audits."
+                }
+            ]
+        },
+
+        # ── Legal & Compliance ────────────────────────────────────────────────
+        {
+            "name": "Zara Qureshi",
+            "email": "zara.qureshi@example.com",
+            "phone": "+92-302-3347812",
+            "location": "Islamabad, ICT",
+            "sector": "Legal & Compliance",
+            "total_experience": 5.0,
+            "skills": ["Corporate Law", "Contract Drafting", "Legal Research", "Compliance", "GDPR", "Company Secretary", "Due Diligence", "Intellectual Property", "Litigation", "Legal Advisory"],
+            "education": [
+                {
+                    "degree": "LLB (Bachelor of Laws)",
+                    "school": "International Islamic University, Islamabad",
+                    "year": "2019-2023"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Corporate Legal Counsel",
+                    "company": "Jazz Pakistan",
+                    "period": "2023 - Present",
+                    "summary": "Drafted and reviewed commercial contracts, NDAs, and vendor agreements. Advised on regulatory compliance with PTA and SECP. Led GDPR implementation for international partnerships."
+                },
+                {
+                    "role": "Legal Associate",
+                    "company": "Orr Dignam & Co. Advocates",
+                    "period": "2021 - 2023",
+                    "summary": "Conducted legal research, prepared court briefs, and assisted in corporate advisory and M&A due diligence."
+                }
+            ]
+        },
+        {
+            "name": "Ali Hassan Zaidi",
+            "email": "ali.zaidi@example.com",
+            "phone": "+92-315-6621044",
+            "location": "Karachi, Sindh",
+            "sector": "Legal & Compliance",
+            "total_experience": 4.0,
+            "skills": ["Anti-Money Laundering", "Risk & Compliance", "Regulatory Affairs", "Labour Law", "Contract Review", "SECP Regulations", "KYC", "AML", "Internal Audit", "Policy Development"],
+            "education": [
+                {
+                    "degree": "LLB (Bachelor of Laws)",
+                    "school": "University of Karachi",
+                    "year": "2020-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Compliance Officer",
+                    "company": "HBL (Habib Bank Limited)",
+                    "period": "2024 - Present",
+                    "summary": "Monitored AML/CFT compliance for corporate banking division. Conducted KYC reviews, prepared regulatory reports for SBP, and trained branch staff on compliance protocols."
+                },
+                {
+                    "role": "Legal Intern",
+                    "company": "Engro Corporation",
+                    "period": "2022 - 2024",
+                    "summary": "Reviewed internal policies, drafted employment contracts, and supported legal team in regulatory filings."
+                }
+            ]
+        },
+
+        # ── Sales & Business Development ──────────────────────────────────────
+        {
+            "name": "Iqra Shafqat",
+            "email": "iqra.shafqat@example.com",
+            "phone": "+92-300-9981127",
+            "location": "Lahore, Punjab",
+            "sector": "Sales & Business Development",
+            "total_experience": 4.0,
+            "skills": ["B2B Sales", "Business Development", "Salesforce CRM", "Account Management", "Lead Generation", "Negotiation", "Sales Strategy", "Market Expansion", "Pipeline Management", "Client Relationship"],
+            "education": [
+                {
+                    "degree": "Bachelor of Business Administration (Marketing & Sales)",
+                    "school": "FAST NUCES, Lahore",
+                    "year": "2020-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Senior Business Development Executive",
+                    "company": "Zones Pakistan",
+                    "period": "2024 - Present",
+                    "summary": "Developed and closed enterprise IT procurement deals worth PKR 50M+. Managed key accounts including banks and telecom operators. Consistently exceeded quarterly revenue targets by 120%."
+                },
+                {
+                    "role": "Sales Executive",
+                    "company": "Inbox Business Technologies",
+                    "period": "2022 - 2024",
+                    "summary": "Generated B2B leads, delivered product demos, and managed SME client relationships across Punjab region."
+                }
+            ]
+        },
+        {
+            "name": "Osama Nawaz",
+            "email": "osama.nawaz@example.com",
+            "phone": "+92-333-1236540",
+            "location": "Karachi, Sindh",
+            "sector": "Sales & Business Development",
+            "total_experience": 3.0,
+            "skills": ["B2C Sales", "CRM", "Cold Calling", "Revenue Growth", "Lead Generation", "Product Demonstrations", "Retail Sales", "Customer Acquisition", "Territory Management", "MS Excel"],
+            "education": [
+                {
+                    "degree": "Bachelor of Commerce",
+                    "school": "University of Karachi",
+                    "year": "2021-2025"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Territory Sales Manager",
+                    "company": "Unilever Pakistan",
+                    "period": "2025 - Present",
+                    "summary": "Managed distribution network across 3 territories in Karachi with 200+ retail outlets. Achieved 110% target attainment in first quarter. Analysed sales data and adjusted territory routing."
+                },
+                {
+                    "role": "Sales Officer",
+                    "company": "P&G Pakistan",
+                    "period": "2023 - 2025",
+                    "summary": "Drove product availability and visibility in modern and general trade. Handled distributor coordination and monthly stock replenishment."
+                }
+            ]
+        },
+
+        # ── Supply Chain & Logistics ──────────────────────────────────────────
+        {
+            "name": "Adeel Ansari",
+            "email": "adeel.ansari@example.com",
+            "phone": "+92-321-7732091",
+            "location": "Karachi, Sindh",
+            "sector": "Supply Chain & Logistics",
+            "total_experience": 6.0,
+            "skills": ["Supply Chain Management", "Procurement", "SAP MM", "Vendor Management", "Demand Planning", "Inventory Management", "ERP", "Import/Export", "Six Sigma", "Logistics"],
+            "education": [
+                {
+                    "degree": "Bachelor of Engineering in Industrial Engineering",
+                    "school": "NED University, Karachi",
+                    "year": "2018-2022"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Supply Chain Manager",
+                    "company": "Nestlé Pakistan",
+                    "period": "2022 - Present",
+                    "summary": "Managed end-to-end supply chain for the dairy & beverages category. Led procurement negotiations saving 8% in annual COGS. Implemented SAP MM module for vendor onboarding."
+                },
+                {
+                    "role": "Supply Chain Analyst",
+                    "company": "Engro Polymer",
+                    "period": "2020 - 2022",
+                    "summary": "Analysed demand data, optimised inventory levels, and co-ordinated import shipments with freight forwarders."
+                }
+            ]
+        },
+        {
+            "name": "Maryam Lodhi",
+            "email": "maryam.lodhi@example.com",
+            "phone": "+92-311-4420819",
+            "location": "Lahore, Punjab",
+            "sector": "Supply Chain & Logistics",
+            "total_experience": 3.5,
+            "skills": ["Logistics", "Warehouse Management", "Last-Mile Delivery", "3PL Management", "Distribution", "Freight", "Fleet Management", "MS Excel", "TMS", "Procurement"],
+            "education": [
+                {
+                    "degree": "Bachelor of Business Administration (Supply Chain)",
+                    "school": "COMSATS University, Lahore",
+                    "year": "2020-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Logistics Operations Executive",
+                    "company": "TCS Pakistan",
+                    "period": "2024 - Present",
+                    "summary": "Oversaw last-mile delivery operations for central Punjab region with 5,000+ daily shipments. Negotiated 3PL contracts and reduced delivery costs by 12% through route optimisation."
+                },
+                {
+                    "role": "Warehouse Supervisor",
+                    "company": "Daraz Pakistan",
+                    "period": "2022 - 2024",
+                    "summary": "Managed inbound/outbound operations in 80,000 sq ft fulfilment centre. Maintained inventory accuracy above 99%."
+                }
+            ]
+        },
+
+        # ── Education & Training ──────────────────────────────────────────────
+        {
+            "name": "Huma Ashraf",
+            "email": "huma.ashraf@example.com",
+            "phone": "+92-303-5510987",
+            "location": "Islamabad, ICT",
+            "sector": "Education & Training",
+            "total_experience": 7.0,
+            "skills": ["Curriculum Development", "Instructional Design", "eLearning", "LMS", "Moodle", "Articulate 360", "Corporate Training", "Assessment Design", "Coaching", "Bloom's Taxonomy"],
+            "education": [
+                {
+                    "degree": "Master of Education (M.Ed)",
+                    "school": "Allama Iqbal Open University",
+                    "year": "2017-2021"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Head of Learning & Development",
+                    "company": "British Council Pakistan",
+                    "period": "2021 - Present",
+                    "summary": "Designed and deployed blended learning programs for 1,000+ learners across Pakistan. Built eLearning modules on Articulate 360, managed LMS on Moodle, and trained 40+ facilitators."
+                },
+                {
+                    "role": "Senior Instructional Designer",
+                    "company": "Sabaq Foundation",
+                    "period": "2019 - 2021",
+                    "summary": "Developed K-12 curriculum content and video lecture scripts aligned with Pakistani national curriculum."
+                }
+            ]
+        },
+        {
+            "name": "Tariq Rehman",
+            "email": "tariq.rehman@example.com",
+            "phone": "+92-345-2219043",
+            "location": "Lahore, Punjab",
+            "sector": "Education & Training",
+            "total_experience": 5.0,
+            "skills": ["Academic Teaching", "Research", "Pedagogy", "TEFL", "Academic Writing", "Curriculum Design", "Mentoring", "Student Assessment", "EdTech", "Public Speaking"],
+            "education": [
+                {
+                    "degree": "Master of Arts in English Literature",
+                    "school": "Government College University, Lahore",
+                    "year": "2018-2022"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Assistant Professor",
+                    "company": "University of Central Punjab",
+                    "period": "2022 - Present",
+                    "summary": "Taught undergraduate courses in English Language and Communication Skills. Supervised thesis projects and published two peer-reviewed research papers in linguistics."
+                },
+                {
+                    "role": "English Language Trainer",
+                    "company": "Beaconhouse School System",
+                    "period": "2020 - 2022",
+                    "summary": "Delivered TEFL-certified English language instruction to secondary level students and prepared students for O/A Level Cambridge exams."
+                }
+            ]
+        },
+
+        # ── Architecture & Design ─────────────────────────────────────────────
+        {
+            "name": "Layla Amin",
+            "email": "layla.amin@example.com",
+            "phone": "+92-311-8803471",
+            "location": "Lahore, Punjab",
+            "sector": "Architecture & Design",
+            "total_experience": 4.0,
+            "skills": ["AutoCAD", "Revit", "SketchUp", "3D Rendering", "Building Design", "Interior Design", "Space Planning", "BIM", "Adobe Photoshop", "InDesign"],
+            "education": [
+                {
+                    "degree": "Bachelor of Architecture (B.Arch)",
+                    "school": "University of Engineering & Technology, Lahore",
+                    "year": "2019-2024"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Architect",
+                    "company": "NESPAK",
+                    "period": "2024 - Present",
+                    "summary": "Designed residential and commercial building blueprints using Revit and AutoCAD. Produced 3D rendered walkthroughs for client presentations. Reviewed contractor shop drawings for compliance."
+                },
+                {
+                    "role": "Junior Architect",
+                    "company": "Creative Unit Architecture",
+                    "period": "2022 - 2024",
+                    "summary": "Drafted architectural layouts for mixed-use developments and prepared construction documentation packages."
+                }
+            ]
+        },
+        {
+            "name": "Bilal Zafar",
+            "email": "bilal.zafar@example.com",
+            "phone": "+92-322-4413659",
+            "location": "Karachi, Sindh",
+            "sector": "Architecture & Design",
+            "total_experience": 3.0,
+            "skills": ["UI/UX Design", "Figma", "Adobe Illustrator", "Adobe Photoshop", "Visual Design", "Branding", "Typography", "Wireframing", "Prototyping", "User Research"],
+            "education": [
+                {
+                    "degree": "Bachelor of Design (Visual Communication)",
+                    "school": "Indus Valley School of Art & Architecture",
+                    "year": "2021-2025"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "UI/UX Designer",
+                    "company": "Foodpanda Pakistan",
+                    "period": "2025 - Present",
+                    "summary": "Designed mobile app and web experiences for consumer-facing features. Conducted user research, built wireframes in Figma, and collaborated closely with engineering on design system components."
+                },
+                {
+                    "role": "Graphic Design Intern",
+                    "company": "Leo Burnett Pakistan",
+                    "period": "2023 - 2025",
+                    "summary": "Created brand identity assets, advertising layouts, and social media creatives for FMCG clients."
+                }
+            ]
+        },
+
+        # ── Media & Journalism ────────────────────────────────────────────────
+        {
+            "name": "Shazia Naeem",
+            "email": "shazia.naeem@example.com",
+            "phone": "+92-333-6601287",
+            "location": "Islamabad, ICT",
+            "sector": "Media & Journalism",
+            "total_experience": 6.0,
+            "skills": ["Journalism", "News Writing", "Investigative Journalism", "Editing", "Proofreading", "Broadcast Media", "Reporting", "Publishing", "Content Writing", "Social Media"],
+            "education": [
+                {
+                    "degree": "Bachelor of Science in Mass Communication",
+                    "school": "Quaid-e-Azam University",
+                    "year": "2018-2022"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Senior Correspondent",
+                    "company": "Dawn News",
+                    "period": "2022 - Present",
+                    "summary": "Covered political and economic beat for one of Pakistan's leading English newspapers. Broke investigative stories on public sector governance. Managed a team of two junior reporters."
+                },
+                {
+                    "role": "Staff Reporter",
+                    "company": "The News International",
+                    "period": "2020 - 2022",
+                    "summary": "Filed daily news stories, conducted interviews with government officials, and contributed to weekend magazine supplements."
+                }
+            ]
+        },
+        {
+            "name": "Usman Butt",
+            "email": "usman.butt@example.com",
+            "phone": "+92-305-2278104",
+            "location": "Lahore, Punjab",
+            "sector": "Media & Journalism",
+            "total_experience": 3.5,
+            "skills": ["Video Production", "Adobe Premiere Pro", "Final Cut Pro", "Scriptwriting", "Videography", "Photography", "Podcasting", "YouTube Content", "Social Media", "Storytelling"],
+            "education": [
+                {
+                    "degree": "Bachelor of Arts in Media Studies",
+                    "school": "Beaconhouse National University, Lahore",
+                    "year": "2021-2025"
+                }
+            ],
+            "experiences": [
+                {
+                    "role": "Video Content Producer",
+                    "company": "Geo News",
+                    "period": "2025 - Present",
+                    "summary": "Produced and edited short-form and long-form video content for digital platforms. Managed YouTube channel growing it from 50K to 200K subscribers through data-driven content strategy."
+                },
+                {
+                    "role": "Multimedia Journalist",
+                    "company": "Samaa TV",
+                    "period": "2023 - 2025",
+                    "summary": "Shot, scripted, and edited feature stories and news packages for on-air and digital broadcast."
+                }
+            ]
         }
     ]
+
     
     for account in MOCK_ACCOUNTS:
         # 1. Upsert into users_collection

@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from .database import users_collection
+from .database import users_collection, candidate_profiles_collection
 import secrets
 import os
 
@@ -72,6 +72,7 @@ class GoogleLoginReq(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = "recruiter"
     create_missing: Optional[bool] = False
+    picture: Optional[str] = None
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -223,6 +224,11 @@ async def google_login(req: GoogleLoginReq):
         role = user.get("role", req.role)
         status = user.get("status", "incomplete_profile")
         
+    # Persist Google profile picture if provided
+    if req.picture:
+        await users_collection.update_many({"email": req.email}, {"$set": {"avatar": req.picture}})
+        await candidate_profiles_collection.update_many({"email": req.email}, {"$set": {"avatar": req.picture}})
+
     token = create_access_token(data={"sub": req.email, "role": role})
     return {
         "access_token": token, 
