@@ -4,6 +4,8 @@ import re
 import random
 from datetime import datetime, timezone
 from bson import ObjectId
+import pdfplumber
+from docx import Document
 from .database import candidate_profiles_collection
 from .extractor import extract_entities, manual_extract_categorized_skills, detect_domain, calculate_experience_robust
 
@@ -226,6 +228,23 @@ def encodeURIComponent(val):
     # simple url encoding for dicebear seed
     return re.sub(r'[^a-zA-Z0-9]', '', val)
 
+def extract_text_from_local_file(filepath: str) -> str:
+    filename = filepath.lower()
+    text = ""
+    try:
+        if filename.endswith('.pdf'):
+            with pdfplumber.open(filepath) as pdf:
+                text = "\n".join([page.extract_text() or "" for page in pdf.pages])
+        elif filename.endswith('.docx'):
+            doc = Document(filepath)
+            text = "\n".join([p.text for p in doc.paragraphs])
+        else:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                text = f.read()
+    except Exception as e:
+        print(f"Error extracting text from {filepath}: {e}")
+    return text.strip()
+
 async def seed_candidates_if_empty():
     count = await candidate_profiles_collection.count_documents({"visibility": "public"})
     print(f"Current public candidate count in DB: {count}")
@@ -235,313 +254,162 @@ async def seed_candidates_if_empty():
         
     await seed_15_mock_candidate_accounts()
 
-    print("Seeding candidates collection with Pakistani identities & real calculated scores...")
-    import math
-    from collections import Counter
+    print("Seeding candidates collection by parsing local CVs...")
+    
+    cv_dir = "A:\\DESKTOP\\CV DATA FOR TESTING"
+    if not os.path.exists(cv_dir):
+        print(f"Local CV directory {cv_dir} does not exist. Seeding skipped.")
+        return
 
-    JOBS = [
-        {
-            "title": "Senior Software Engineer – Java",
-            "min_experience": 4,
-            "sector": "Software Development",
-            "core_skills": ["Java", "Spring Boot", "Microservices", "PostgreSQL", "Docker", "Kubernetes", "REST APIs", "CI/CD"],
-            "domain": "Software Development"
-        },
-        {
-            "title": "React.js Frontend Developer",
-            "min_experience": 2,
-            "sector": "Web Development",
-            "core_skills": ["React.js", "JavaScript", "HTML", "CSS", "TypeScript", "Redux", "Tailwind CSS", "REST APIs", "Git"],
-            "domain": "Web Development"
-        },
-        {
-            "title": "Python Backend Engineer (Django/DRF)",
-            "min_experience": 3,
-            "sector": "Software Development",
-            "core_skills": ["Python", "Django", "FastAPI", "PostgreSQL", "Redis", "Docker", "REST APIs", "Git", "Celery"],
-            "domain": "Software Development"
-        },
-        {
-            "title": "DevOps Engineer",
-            "min_experience": 3,
-            "sector": "Cloud & DevOps",
-            "core_skills": ["Docker", "Kubernetes", "AWS", "Terraform", "CI/CD", "Linux", "Bash", "GitHub Actions", "Nginx"],
-            "domain": "Cloud & DevOps"
-        },
-        {
-            "title": "Full Stack .NET Developer",
-            "min_experience": 4,
-            "sector": "Software Development",
-            "core_skills": ["C#", ".NET Core", "ASP.NET MVC", "SQL Server", "Entity Framework", "JavaScript", "Angular", "Web API", "Azure"],
-            "domain": "Software Development"
-        },
-        {
-            "title": "QA Automation Engineer",
-            "min_experience": 3,
-            "sector": "QA & Testing",
-            "core_skills": ["Selenium", "Python", "Cypress", "JavaScript", "QA Automation", "API Testing", "Postman", "CI/CD", "JIRA"],
-            "domain": "QA & Testing"
-        },
-        {
-            "title": "iOS Developer (Swift)",
-            "min_experience": 3,
-            "sector": "Mobile Development",
-            "core_skills": ["Swift", "UIKit", "SwiftUI", "Xcode", "CocoaPods", "REST APIs", "Git", "CoreData", "App Store Guidelines"],
-            "domain": "Mobile Development"
-        },
-        {
-            "title": "Android Developer (Kotlin)",
-            "min_experience": 3,
-            "sector": "Mobile Development",
-            "core_skills": ["Kotlin", "Java", "Android SDK", "Android Studio", "Retrofit", "Jetpack Compose", "Git", "MVVM"],
-            "domain": "Mobile Development"
-        },
-        {
-            "title": "Data Engineer (Azure)",
-            "min_experience": 4,
-            "sector": "Data Engineering",
-            "core_skills": ["Azure Data Factory", "Databricks", "SQL Server", "Python", "ETL", "Data Pipelines", "Power BI", "PySpark"],
-            "domain": "Data Engineering"
-        },
-        {
-            "title": "Machine Learning Engineer",
-            "min_experience": 3,
-            "sector": "Data Science",
-            "core_skills": ["Python", "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch", "Scikit-Learn", "Pandas", "Computer Vision", "NLP"],
-            "domain": "Data Science"
-        },
-        {
-            "title": "Java EE Developer – Banking Systems",
-            "min_experience": 5,
-            "sector": "Software Development",
-            "core_skills": ["Java EE", "EJB", "Hibernate", "Oracle DB", "WebLogic", "JSP", "SOAP Web Services", "Banking Domain Knowledge"],
-            "domain": "Software Development"
-        },
-        {
-            "title": "PHP Laravel Web Developer",
-            "min_experience": 2,
-            "sector": "Web Development",
-            "core_skills": ["PHP", "Laravel", "MySQL", "JavaScript", "jQuery", "REST APIs", "Git", "HTML", "CSS", "Bootstrap"],
-            "domain": "Web Development"
-        },
-        {
-            "title": "Data Analyst (SQL & BI)",
-            "min_experience": 2,
-            "sector": "Data Science",
-            "core_skills": ["SQL", "Power BI", "Tableau", "Excel", "Data Analysis", "Reporting", "Python", "Statistics", "Data Cleaning"],
-            "domain": "Data Science"
-        },
-        {
-            "title": "Cloud Solutions Architect (AWS)",
-            "min_experience": 5,
-            "sector": "Cloud & DevOps",
-            "core_skills": ["AWS", "Solution Architecture", "Terraform", "Microservices", "EKS", "Lambda", "DynamoDB", "CloudFormation", "Cost Optimization"],
-            "domain": "Cloud & DevOps"
-        },
-        {
-            "title": "Magento / Shopify Developer",
-            "min_experience": 2,
-            "sector": "Web Development",
-            "core_skills": ["Magento 2", "Shopify", "PHP", "MySQL", "JavaScript", "REST APIs", "Theme Development", "Payment Gateways", "HTML", "CSS"],
-            "domain": "Web Development"
-        },
-        {
-            "title": "Full Stack Developer (MEAN/MERN)",
-            "min_experience": 2,
-            "sector": "Web Development",
-            "core_skills": ["React.js", "Node.js", "MongoDB", "Express.js", "TypeScript", "REST APIs", "JWT", "Git", "HTML", "CSS"],
-            "domain": "Web Development"
-        },
-        {
-            "title": "Cybersecurity Analyst",
-            "min_experience": 3,
-            "sector": "Cyber Security",
-            "core_skills": ["SIEM", "Vulnerability Assessment", "Penetration Testing", "Firewall", "OWASP", "Network Security", "Incident Response", "Python", "Linux"],
-            "domain": "Cyber Security"
-        }
-    ]
+    import shutil
+    import uuid
+    from .models.classifier import predict_sector_nb
 
-    PAKISTANI_NAMES = [
-        ("Muhammad Ali", "muhammad.ali"), ("Ahmed Khan", "ahmed.khan"), ("Usman Sheikh", "usman.sheikh"),
-        ("Bilal Siddiqui", "bilal.siddiqui"), ("Hamza Malik", "hamza.malik"), ("Zeeshan Abbasi", "zeeshan.abbasi"),
-        ("Faisal Shah", "faisal.shah"), ("Omer Farooq", "omer.farooq"), ("Asad Mehmood", "asad.mehmood"),
-        ("Saad Rizvi", "saad.rizvi"), ("Haris Iqbal", "haris.iqbal"), ("Zain ul Abideen", "zain.abideen"),
-        ("Mustafa Qureshi", "mustafa.quresi"), ("Hassan Jamil", "hassan.jamil"), ("Ali Raza", "ali.raza"),
-        ("Daniyal Ahmed", "daniyal.ahmed"), ("Shahzaib Khan", "shahzaib.khan"), ("Talha Bukhari", "talha.bukhari"),
-        ("Junaid Mughal", "junaid.mughal"), ("Yasir Arafat", "yasir.arafat"), ("Ayesha Fatima", "ayesha.fatima"),
-        ("Sana Ahmed", "sana.ahmed"), ("Mariam Khan", "mariam.khan"), ("Hina Malik", "hina.malik"),
-        ("Fatima Noor", "fatima.noor"), ("Zainab Bibi", "zainab.bibi"), ("Sadia Parveen", "sadia.parveen"),
-        ("Mahnoor Farooq", "mahnoor.farooq"), ("Rabia Basri", "rabia.basri"), ("Nida Yasir", "nida.yasir"),
-        ("Sarah Sheikh", "sarah.sheikh"), ("Iqra Jamil", "iqra.jamil"), ("Alizeh Shah", "alizeh.shah"),
-        ("Kiran Abbasi", "kiran.abbasi"), ("Areeba Kamal", "areeba.kamal"), ("Laiba Rehman", "laiba.rehman"),
-        ("Fiza Javed", "fiza.javed"), ("Zoya Malik", "zoya.malik"), ("Amna Butt", "amna.butt"),
-        ("Bismah Maroof", "bismah.maroof")
-    ]
+    # Locate files in the root folder of A:\DESKTOP\CV DATA FOR TESTING
+    root_files = []
+    for f in os.listdir(cv_dir):
+        full_path = os.path.join(cv_dir, f)
+        if os.path.isfile(full_path):
+            name_lower = f.lower()
+            # Skip job descriptions or JDs
+            if "job description" in name_lower or "job title" in name_lower or "jd " in name_lower:
+                continue
+            if name_lower.endswith('.pdf') or name_lower.endswith('.docx'):
+                root_files.append(full_path)
 
-    PAKISTANI_CITIES = [
-        "Lahore, Punjab", "Karachi, Sindh", "Islamabad, ICT", "Rawalpindi, Punjab",
-        "Peshawar, KPK", "Faisalabad, Punjab", "Multan, Punjab", "Quetta, Balochistan",
-        "Sialkot, Punjab", "Gujranwala, Punjab", "Hyderabad, Sindh"
-    ]
+    print(f"Found {len(root_files)} CV files at the root of {cv_dir}")
 
-    UNIVERSITIES = [
-        "National University of Sciences and Technology (NUST)", "FAST NUCES",
-        "Lahore University of Management Sciences (LUMS)", "COMSATS University Islamabad",
-        "NED University of Engineering and Technology", "University of Karachi",
-        "Ghulam Ishaq Khan Institute (GIKI)", "Punjab University (PU)",
-        "Institute of Business Administration (IBA) Karachi", "UET Lahore",
-        "Quaid-e-Azam University"
-    ]
+    # Now let's search for docx files in Generated_DOCX grouped by domain directory
+    sub_dir = os.path.join(cv_dir, "Generated_DOCX")
+    sampled_sub_files = []
+    if os.path.exists(sub_dir):
+        for domain_folder in os.listdir(sub_dir):
+            domain_path = os.path.join(sub_dir, domain_folder)
+            if os.path.isdir(domain_path):
+                domain_files = [
+                    os.path.join(domain_path, f)
+                    for f in os.listdir(domain_path)
+                    if f.lower().endswith('.docx')
+                ]
+                if domain_files:
+                    # Seed exactly 1-2 files per domain
+                    take_count = min(len(domain_files), 2)
+                    sampled_sub_files.extend(random.sample(domain_files, take_count))
+                    
+    print(f"Sampled {len(sampled_sub_files)} CV files from Generated_DOCX (representing all domains)")
 
-    EXTRA_SKILLS = {
-        "Software Development": ["Git", "SQL", "Agile", "Linux", "REST APIs", "OOP", "Data Structures", "Algorithms", "GitHub", "Unit Testing"],
-        "Web Development": ["HTML", "CSS", "Git", "JavaScript", "SQL", "REST APIs", "Sass", "GitHub", "JSON", "Bootstrap"],
-        "Cloud & DevOps": ["Git", "Linux", "Docker", "Shell Scripting", "CI/CD", "GitHub Actions", "YAML", "Networking", "Bash", "Python"],
-        "QA & Testing": ["Git", "JIRA", "Manual Testing", "SQL", "Bug Tracking", "API Testing", "Postman", "SDLC", "Agile", "Test Cases"],
-        "Data Engineering": ["SQL", "Python", "Git", "ETL", "Data Warehousing", "Linux", "Data Modeling", "Bash", "Apache Spark", "Docker"],
-        "Data Science": ["Python", "SQL", "Pandas", "NumPy", "Matplotlib", "Data Analysis", "Git", "Statistics", "Jupyter"],
-        "Cyber Security": ["Linux", "Networking", "Python", "Wireshark", "Firewalls", "Information Security", "Cryptography", "Bash", "Git", "CEH"],
-        "Management": ["JIRA", "Agile", "Scrum", "Communication", "Project Management", "MS Excel", "Leadership", "Trello", "Requirements", "Visio"]
-    }
-
-    def local_manual_ranker(jd_skills, resume_skills):
-        vocabulary = list(set(jd_skills + resume_skills))
-        if not vocabulary:
-            return 0.0
-        def build_vector(skills, vocab):
-            count = Counter(skills)
-            return [count.get(word, 0) for word in vocab]
-        v_jd = build_vector(jd_skills, vocabulary)
-        v_res = build_vector(resume_skills, vocabulary)
-        dot_product = sum(a * b for a, b in zip(v_jd, v_res))
-        mag_jd = math.sqrt(sum(a**2 for a in v_jd))
-        mag_res = math.sqrt(sum(b**2 for b in v_res))
-        if mag_jd == 0 or mag_res == 0:
-            return 0.0
-        return dot_product / (mag_jd * mag_res)
-
-    def local_calculate_experience_score(candidate_exp, required_years, is_plus=True):
-        if required_years == 0:
-            return 100.0
-        if is_plus:
-            if candidate_exp >= required_years:
-                return 100.0
-            return (candidate_exp / required_years) * 100
-        distance = abs(candidate_exp - required_years)
-        if distance == 0:
-            return 100.0
-        elif distance == 1:
-            return 70.0
-        elif distance == 2:
-            return 40.0
-        else:
-            return 10.0
+    all_cv_files = root_files + sampled_sub_files
+    print(f"Total files selected for parsing and seeding: {len(all_cv_files)}")
 
     candidates_to_insert = []
-    names_pool = list(PAKISTANI_NAMES)
-    random.shuffle(names_pool)
-    
-    for i in range(35):
-        job = JOBS[i % len(JOBS)]
-        name, slug = names_pool[i % len(names_pool)]
-        
-        if i >= len(names_pool):
-            suffix = (i // len(names_pool)) + 1
-            name = f"{name} {suffix}"
-            email = f"{slug}{suffix}@example.com"
-        else:
-            email = f"{slug}@example.com"
+    os.makedirs(os.path.join("data", "cvs"), exist_ok=True)
+
+    for filepath in all_cv_files:
+        try:
+            filename = os.path.basename(filepath)
+            print(f"Parsing: {filename}")
             
-        city = random.choice(PAKISTANI_CITIES)
-        phone = f"+92-{random.randint(300, 349)}-{random.randint(1000000, 9999999)}"
-        uni = random.choice(UNIVERSITIES)
-        
-        experience_offset = random.choice([-1, 0, 1, 2, 3, 4])
-        exp_val = max(1, job["min_experience"] + experience_offset)
-        
-        fit_profile = random.choice(["high", "high", "medium", "medium", "low"])
-        core_skills_to_include = list(job["core_skills"])
-        if fit_profile == "high":
-            take_count = random.randint(math.ceil(len(core_skills_to_include) * 0.7), len(core_skills_to_include))
-        elif fit_profile == "medium":
-            take_count = random.randint(math.ceil(len(core_skills_to_include) * 0.45), math.ceil(len(core_skills_to_include) * 0.7) - 1)
-        else:
-            take_count = random.randint(1, math.ceil(len(core_skills_to_include) * 0.45) - 1)
+            # Extract text
+            text = extract_text_from_local_file(filepath)
+            if not text:
+                print(f"  ! Skipped empty text file: {filename}")
+                continue
+
+            # Copy file to data/cvs project folder so it can be served
+            dest_folder = os.path.join("data", "cvs", str(uuid.uuid4()))
+            os.makedirs(dest_folder, exist_ok=True)
+            dest_filepath = os.path.join(dest_folder, filename)
+            shutil.copy2(filepath, dest_filepath)
             
-        random.shuffle(core_skills_to_include)
-        cand_skills = core_skills_to_include[:take_count]
-        
-        extras = list(EXTRA_SKILLS.get(job["domain"], ["Git", "SQL", "Linux"]))
-        random.shuffle(extras)
-        for skill in extras[:random.randint(2, 4)]:
-            if skill.lower() not in [s.lower() for s in cand_skills]:
-                cand_skills.append(skill)
-                
-        skill_match_ratio = local_manual_ranker(job["core_skills"], cand_skills)
-        skillMatch = int(round(skill_match_ratio * 100))
-        expMatch = int(round(local_calculate_experience_score(exp_val, job["min_experience"], is_plus=True)))
-        score = int(round(skillMatch * 0.7 + expMatch * 0.3))
-        
-        cand_skills = [s.title() for s in cand_skills]
-        past_companies = ["Systems Limited", "Arbisoft", "10Pearls", "Folio3", "Tkxel", "Contour Software", "Devsinc", "Venturedive"]
-        random.shuffle(past_companies)
-        
-        experiences = [{
-            "role": f"Software Engineer" if exp_val < 4 else f"Senior {job['title'].split('–')[0].strip()}",
-            "company": past_companies[0],
-            "period": f"2023 - Present",
-            "summary": f"Responsible for building and optimization of core features. Developed microservices, APIs, and participated in UI upgrades."
-        }]
-        
-        if exp_val > 2:
-            experiences.append({
-                "role": "Associate Software Engineer" if exp_val < 5 else "Software Engineer",
-                "company": past_companies[1],
-                "period": f"2021 - 2023",
-                "summary": "Assisted in code deployments, bug hunting, wrote unit tests, and collaborated on cross-functional requirements."
-            })
+            # Standardize path for frontend
+            cv_web_path = dest_filepath.replace("\\", "/")
+
+            # Extract entities
+            entities = extract_entities(text)
             
-        grad_year = 2026 - exp_val
-        education = [{
-            "degree": "Bachelor of Science in Computer Science",
-            "school": uni,
-            "year": f"{grad_year-4}-{grad_year}"
-        }]
-        
-        avatar = f"https://api.dicebear.com/9.x/notionists/svg?seed={slug}"
-        status = "new"
+            # Naive Bayes classification
+            nb_res = predict_sector_nb(text)
+            sector = nb_res["mapped_sector"]
+            raw_category = nb_res["raw_category"]
+
+            name = entities.get("Name")
+            if not name or name == "Unknown Name" or name == "Unknown":
+                name = os.path.splitext(filename)[0]
+                if " Email " in name:
+                    name = name.split(" Email ")[0]
+                name = name.strip()
+
+            email = entities.get("Email")
+            if not email or email == "Not Found":
+                email_slug = re.sub(r'[^a-zA-Z0-9]', '.', name.lower())
+                email = f"{email_slug}@example.com"
+
+            phone = entities.get("Phone")
+            if not phone or phone == "Not Found":
+                phone = f"+92-{random.randint(300, 349)}-{random.randint(1000000, 9999999)}"
+
+            exp_val = entities.get("Years_of_Experience", 0)
+            if not exp_val or exp_val == 0:
+                exp_val = random.randint(1, 5)
+
+            skills = entities.get("Skills", [])
+            if not skills:
+                skills = ["Software Engineering", "Management", "Communication"]
+
+            title = entities.get("Designation")
+            if not title or title == "Not Found":
+                title = raw_category or "Professional Candidate"
+
+            # Create mock experiences and education based on parsed data
+            experiences = [{
+                "role": title,
+                "company": "Previous Company",
+                "period": f"2023 - Present",
+                "summary": "Worked on key projects and software development matching the skillsets."
+            }]
+            education = [{
+                "degree": "Bachelor of Science",
+                "school": "University of Lahore",
+                "year": "2018-2022"
+            }]
+
+            avatar = f"https://api.dicebear.com/9.x/notionists/svg?seed={re.sub(r'[^a-zA-Z0-9]', '', name)}"
+            appliedDate = f"2026-05-{random.randint(1, 28):02d}"
+
+            candidate_doc = {
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "location": "Lahore, Pakistan",
+                "title": title,
+                "experience": exp_val,
+                "score": 75,
+                "skillMatch": 75,
+                "expMatch": 75,
+                "domain": sector,
+                "status": "new",
+                "recruiter_statuses": {},
+                "skills": skills,
+                "education": education,
+                "experiences": experiences,
+                "appliedFor": title,
+                "avatar": avatar,
+                "appliedDate": appliedDate,
+                "visibility": "public",
+                "original_cv_path": cv_web_path,
+                "raw_category": raw_category,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            candidates_to_insert.append(candidate_doc)
             
-        applied_day = random.randint(1, 28)
-        appliedDate = f"2026-05-{applied_day:02d}"
-        
-        candidate_doc = {
-            "name": name,
-            "email": email,
-            "phone": phone,
-            "location": city,
-            "title": job["title"],
-            "experience": exp_val,
-            "score": score,
-            "skillMatch": skillMatch,
-            "expMatch": expMatch,
-            "domain": job["domain"],
-            "status": status,
-            "recruiter_statuses": {},
-            "skills": cand_skills,
-            "education": education,
-            "experiences": experiences,
-            "appliedFor": job["title"],
-            "avatar": avatar,
-            "appliedDate": appliedDate,
-            "visibility": "public"
-        }
-        candidates_to_insert.append(candidate_doc)
-        
+        except Exception as e:
+            print(f"Error parsing local CV {filepath}: {e}")
+
     if candidates_to_insert:
         result = await candidate_profiles_collection.insert_many(candidates_to_insert)
-        print(f"Successfully seeded {len(result.inserted_ids)} Pakistani candidates into MongoDB!")
+        print(f"Successfully seeded {len(result.inserted_ids)} candidates from local directory into MongoDB!")
     else:
-        print("No candidates generated to seed.")
+        print("No candidates found or parsed from local directory.")
 
 async def seed_15_mock_candidate_accounts():
     from .database import users_collection, candidate_profiles_collection

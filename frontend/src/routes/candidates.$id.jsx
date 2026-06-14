@@ -403,7 +403,7 @@ Best regards,
                       <span className="text-primary font-bold">{skillMatch}%</span>
                     </div>
                     <Progress value={skillMatch} className="h-1.5" />
-                    <p className="text-[9px] text-slate-400 font-medium">TF-IDF cosine similarity of resume skill tokens.</p>
+                    <p className="text-[9px] text-slate-400 font-medium">KNN Euclidean similarity of resume skill tokens.</p>
                   </div>
 
                   {/* Experience Match */}

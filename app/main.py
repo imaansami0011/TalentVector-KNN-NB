@@ -1,6 +1,7 @@
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request, Header, Depends
+from fastapi.staticfiles import StaticFiles
 from datetime import datetime, timezone
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -98,6 +99,14 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(candidate_router)
 app.include_router(recruiter_router)
+
+# Ensure folders exist
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("data", exist_ok=True)
+
+# Mount static file directories
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/data", StaticFiles(directory="data"), name="data")
 
 @app.get("/")
 async def root():

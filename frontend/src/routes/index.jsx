@@ -18,20 +18,22 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 })
 
-// Helper client-side Cosine Similarity logic matching backend exactly
-function calculateCosineSimilarity(jdSkills, candidateSkills) {
-  const vocabulary = Array.from(new Set([...jdSkills, ...candidateSkills]))
+// Helper client-side KNN Euclidean similarity matching backend exactly
+function calculateKnnSimilarity(jdSkills, candidateSkills) {
+  const jdLower = jdSkills.map(s => s.toLowerCase())
+  const candLower = candidateSkills.map(s => s.toLowerCase())
+  const vocabulary = Array.from(new Set([...jdLower, ...candLower]))
   if (vocabulary.length === 0) return 0
 
-  const v_jd = vocabulary.map(skill => jdSkills.includes(skill) ? 1 : 0)
-  const v_cand = vocabulary.map(skill => candidateSkills.includes(skill) ? 1 : 0)
-
-  const dotProduct = v_jd.reduce((sum, val, idx) => sum + val * v_cand[idx], 0)
-  const magJd = Math.sqrt(v_jd.reduce((sum, val) => sum + val * val, 0))
-  const magCand = Math.sqrt(v_cand.reduce((sum, val) => sum + val * val, 0))
-
-  if (magJd === 0 || magCand === 0) return 0
-  return dotProduct / (magJd * magCand)
+  let sumSquaredDiff = 0
+  for (let i = 0; i < vocabulary.length; i++) {
+    const valJd = jdLower.includes(vocabulary[i]) ? 1 : 0
+    const valCand = candLower.includes(vocabulary[i]) ? 1 : 0
+    const diff = valJd - valCand
+    sumSquaredDiff += diff * diff
+  }
+  const distance = Math.sqrt(sumSquaredDiff)
+  return 1 / (1 + distance)
 }
 
 // Explicit color mapper maps string identities to compile-safe Tailwind classes
@@ -71,7 +73,7 @@ function LandingPage() {
   const [roleTab, setRoleTab] = React.useState("recruiter")
 
   const similarityScore = React.useMemo(() => {
-    const score = calculateCosineSimilarity(DEMO_JD_SKILLS, selectedSkills)
+    const score = calculateKnnSimilarity(DEMO_JD_SKILLS, selectedSkills)
     return Math.round(score * 100)
   }, [selectedSkills])
 
@@ -351,12 +353,12 @@ function LandingPage() {
               </svg>
               <div className="absolute flex flex-col items-center justify-center gap-0.5">
                 <span className="text-4xl font-black text-white tracking-tight">{similarityScore}%</span>
-                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">Cosine Similarity</span>
+                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">KNN Match Score</span>
               </div>
             </div>
 
             <div className="text-xs font-mono text-slate-500 select-none tracking-wider bg-slate-950/50 px-4 py-2 rounded-lg border border-white/5">
-              cos(θ) = (A · B) / (||A|| × ||B||)
+              score = 1 / (1 + Euclidean distance)
             </div>
           </div>
         </div>

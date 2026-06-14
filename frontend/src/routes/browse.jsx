@@ -107,43 +107,29 @@ function MarketDiscovery() {
     return ['All Cities', ...TOP_PAKISTAN_CITIES, ...Array.from(extraCities)]
   }, [jobs])
 
-  // Cosine Similarity score matching the backend manual_ranker
-  const calculateCosineSimilarity = (jdSkills, resumeSkills) => {
+  // KNN Euclidean distance similarity matching the backend manual_ranker
+  const calculateKnnSimilarity = (jdSkills, resumeSkills) => {
     if (!jdSkills || jdSkills.length === 0 || !resumeSkills || resumeSkills.length === 0) return 0
-    const vocabulary = Array.from(new Set([...jdSkills, ...resumeSkills].map(s => s.toLowerCase())))
+    const jdLower = jdSkills.map(s => s.toLowerCase())
+    const resumeLower = resumeSkills.map(s => s.toLowerCase())
+    const vocabulary = Array.from(new Set([...jdLower, ...resumeLower]))
     if (vocabulary.length === 0) return 0
 
-    const buildVector = (skills, vocab) => {
-      const counts = {}
-      skills.forEach(s => {
-        const lower = s.toLowerCase()
-        counts[lower] = (counts[lower] || 0) + 1
-      })
-      return vocab.map(word => counts[word] || 0)
-    }
-
-    const vJd = buildVector(jdSkills, vocabulary)
-    const vRes = buildVector(resumeSkills, vocabulary)
-
-    let dotProduct = 0
-    let magJd = 0
-    let magRes = 0
+    let sumSquaredDiff = 0
     for (let i = 0; i < vocabulary.length; i++) {
-      dotProduct += vJd[i] * vRes[i]
-      magJd += vJd[i] * vJd[i]
-      magRes += vRes[i] * vRes[i]
+      const valJd = jdLower.includes(vocabulary[i]) ? 1 : 0
+      const valRes = resumeLower.includes(vocabulary[i]) ? 1 : 0
+      const diff = valJd - valRes
+      sumSquaredDiff += diff * diff
     }
-    magJd = Math.sqrt(magJd)
-    magRes = Math.sqrt(magRes)
-
-    if (magJd === 0 || magRes === 0) return 0
-    return dotProduct / (magJd * magRes)
+    const distance = Math.sqrt(sumSquaredDiff)
+    return 1 / (1 + distance)
   }
 
-  // Weighted score matching backend (70% Skills Cosine, 30% Experience Ratio)
+  // Weighted score matching backend (70% Skills KNN, 30% Experience Ratio)
   const calculateMatchScore = (job, candidateProfile) => {
     if (!job || !candidateProfile) return 0
-    const skillScore = calculateCosineSimilarity(job.core_skills || [], candidateProfile.skills || []) * 100
+    const skillScore = calculateKnnSimilarity(job.core_skills || [], candidateProfile.skills || []) * 100
     const requiredExp = job.min_experience || 0
     const actualExp = candidateProfile.total_experience || 0
     const expScore = requiredExp === 0 ? 100 : (actualExp >= requiredExp ? 100 : (actualExp / requiredExp) * 100)
