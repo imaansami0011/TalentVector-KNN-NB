@@ -10,7 +10,7 @@ import { routeTree } from './routeTree.gen'
 // Create a new router instance
 const router = createRouter({ routeTree })
 
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ""
+const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "100000000000-mockclientid.apps.googleusercontent.com"
 
 const rootElement = document.getElementById('root')
 if (!rootElement.innerHTML) {
