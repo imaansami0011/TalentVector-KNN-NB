@@ -1,10 +1,8 @@
 
 import re
 from datetime import datetime
-import spacy
 import json
 import os
-from spacy.matcher import PhraseMatcher
 
 from .constants import NAME_BLOCKLIST, SYNONYMS, DOMAIN_MAP, COMMON_TITLES, SKILLS_CATEGORIES_TO_DOMAINS
 
