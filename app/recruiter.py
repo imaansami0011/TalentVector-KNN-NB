@@ -208,7 +208,8 @@ async def send_campaign_invitations(
     job_title: str,
     company_details: dict,
     recruiter_name: str,
-    recruiter_role: str
+    recruiter_role: str,
+    recruiter_id: str
 ):
     from .mailer import send_candidate_invite_email
     from .database import candidate_profiles_collection
@@ -229,7 +230,7 @@ async def send_campaign_invitations(
             )
             await candidate_profiles_collection.update_one(
                 {"_id": ObjectId(m["id"])},
-                {"$set": {"status": "shortlisted"}}
+                {"$set": {f"recruiter_statuses.{recruiter_id}": "shortlisted"}}
             )
         except Exception as e:
             print(f"Error dispatching background invitation to {m.get('email')}: {e}")
@@ -311,7 +312,7 @@ async def save_finalized_jd(
                 "experience_years": actual_exp,
                 "match_score_percentage": score,
                 "cv_file_path": c.get("original_cv_path", "").replace("\\", "/") if c.get("original_cv_path") else "",
-                "status": c.get("status", "new"),
+                "status": c.get("recruiter_statuses", {}).get(x_user_id, "new"),
                 "experiences": c.get("experiences", []),
                 "education": c.get("education", [])
             })
@@ -337,7 +338,8 @@ async def save_finalized_jd(
                 doc.get("title", "the role"),
                 company_details,
                 recruiter_name,
-                recruiter_role
+                recruiter_role,
+                x_user_id
             )
             
             for m in eligible_matches[:auto_invite_count]:
@@ -590,7 +592,7 @@ async def search_global_candidates(
             "experiences": c.get("experiences", []),
             "cv_file_path": c.get("original_cv_path", ""),
             "match_score_percentage": round(final_weighted_score, 2),
-            "status": c.get("status", "new")
+            "status": c.get("recruiter_statuses", {}).get(x_user_id, "new")
         })
         
     candidate_list.sort(key=lambda x: x['match_score_percentage'], reverse=True)
@@ -662,7 +664,7 @@ async def invite_candidate_by_id(
     
     await candidate_profiles_collection.update_one(
         {"_id": cand_obj_id},
-        {"$set": {"status": "shortlisted"}}
+        {"$set": {f"recruiter_statuses.{x_user_id}": "shortlisted"}}
     )
     
     return {"message": f"Branded invitation sent to {candidate.get('email')}", "status": "shortlisted"}
@@ -729,7 +731,17 @@ async def get_candidates(
     if status and status != "Any" and status != "All":
         if "$and" not in query:
             query = {"$and": [query]}
-        query["$and"].append({"status": status})
+        if status == "new":
+            query["$and"].append({
+                "$or": [
+                    {f"recruiter_statuses.{x_user_id}": "new"},
+                    {f"recruiter_statuses.{x_user_id}": {"$exists": False}}
+                ]
+            })
+        else:
+            query["$and"].append({
+                f"recruiter_statuses.{x_user_id}": status
+            })
 
     cursor = candidate_profiles_collection.find(query)
     candidates = await cursor.to_list(length=100)
@@ -745,6 +757,7 @@ async def get_candidates(
     for c in candidates:
         c["id"] = str(c["_id"])
         del c["_id"]
+        c["status"] = c.get("recruiter_statuses", {}).get(x_user_id, "new")
         
         if target_jd:
             from .ranker import manual_ranker
@@ -786,7 +799,8 @@ async def get_candidate_filters(current_user: dict = Depends(get_current_recruit
     domains_1 = await candidate_profiles_collection.distinct("domain", query)
     domains_2 = await candidate_profiles_collection.distinct("sector", query)
     domains = list(set(domains_1 + domains_2))
-    statuses = await candidate_profiles_collection.distinct("status", query)
+    recruiter_statuses = await candidate_profiles_collection.distinct(f"recruiter_statuses.{x_user_id}", query)
+    statuses = list(set(recruiter_statuses + ["new"]))
     total = await candidate_profiles_collection.count_documents(query)
     
     # Clean up None/empty values
@@ -818,6 +832,7 @@ async def get_candidate_details(
         
     candidate["id"] = str(candidate["_id"])
     del candidate["_id"]
+    candidate["status"] = candidate.get("recruiter_statuses", {}).get(x_user_id, "new")
     
     # Dynamic match evaluation if jd_id is provided
     target_jd = None
@@ -878,7 +893,7 @@ async def update_candidate_status(
         
     result = await candidate_profiles_collection.update_one(
         {"_id": obj_id},
-        {"$set": {"status": status_update.status}}
+        {"$set": {f"recruiter_statuses.{x_user_id}": status_update.status}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Candidate not found")
@@ -921,16 +936,33 @@ async def get_recruiter_stats(current_user: dict = Depends(get_current_recruiter
         visibility_or.append({"email": user_email})
 
     shortlisted_count = await candidate_profiles_collection.count_documents({
-        "status": "shortlisted",
+        f"recruiter_statuses.{x_user_id}": "shortlisted",
         "$or": visibility_or
     })
     
     pipeline = {
-        "new": await candidate_profiles_collection.count_documents({"status": "new", "$or": visibility_or}),
-        "review": await candidate_profiles_collection.count_documents({"status": "review", "$or": visibility_or}),
-        "rejected": await candidate_profiles_collection.count_documents({"status": "rejected", "$or": visibility_or}),
+        "new": await candidate_profiles_collection.count_documents({
+            "$and": [
+                {"$or": visibility_or},
+                {"$or": [
+                    {f"recruiter_statuses.{x_user_id}": "new"},
+                    {f"recruiter_statuses.{x_user_id}": {"$exists": False}}
+                ]}
+            ]
+        }),
+        "review": await candidate_profiles_collection.count_documents({
+            f"recruiter_statuses.{x_user_id}": "review",
+            "$or": visibility_or
+        }),
+        "rejected": await candidate_profiles_collection.count_documents({
+            f"recruiter_statuses.{x_user_id}": "rejected",
+            "$or": visibility_or
+        }),
         "shortlisted": shortlisted_count,
-        "hired": await candidate_profiles_collection.count_documents({"status": "hired", "$or": visibility_or})
+        "hired": await candidate_profiles_collection.count_documents({
+            f"recruiter_statuses.{x_user_id}": "hired",
+            "$or": visibility_or
+        })
     }
     
     return {
@@ -980,6 +1012,29 @@ async def get_job_results(job_id: str, current_user: dict = Depends(get_current_
     if screening:
         candidates = screening.get("candidates", [])
         mode = screening.get("mode", "global")
+        # Update each candidate's status with the latest recruiter-specific status
+        cand_ids = []
+        for c in candidates:
+            c_id = c.get("id") or c.get("_id")
+            if c_id:
+                cand_ids.append(c_id)
+        if cand_ids:
+            from bson import ObjectId
+            obj_ids = []
+            for cid in cand_ids:
+                try:
+                    obj_ids.append(ObjectId(cid))
+                except Exception:
+                    pass
+            profiles_cursor = candidate_profiles_collection.find({"_id": {"$in": obj_ids}})
+            profiles = await profiles_cursor.to_list(length=len(obj_ids))
+            profiles_map = {str(p["_id"]): p for p in profiles}
+            for c in candidates:
+                c_id = c.get("id") or c.get("_id")
+                if c_id and str(c_id) in profiles_map:
+                    c["status"] = profiles_map[str(c_id)].get("recruiter_statuses", {}).get(x_user_id, "new")
+                else:
+                    c["status"] = "new"
         
     if not candidates:
         mode = "global"
@@ -1014,7 +1069,7 @@ async def get_job_results(job_id: str, current_user: dict = Depends(get_current_
                 "experience_years": actual_exp,
                 "match_score_percentage": round(final_weighted_score),
                 "cv_file_path": c.get("original_cv_path", "").replace("\\", "/") if c.get("original_cv_path") else "",
-                "status": c.get("status", "new"),
+                "status": c.get("recruiter_statuses", {}).get(x_user_id, "new"),
                 "experiences": c.get("experiences", []),
                 "education": c.get("education", [])
             })

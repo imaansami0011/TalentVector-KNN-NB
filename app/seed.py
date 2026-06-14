@@ -183,7 +183,7 @@ def parse_resume_json_line(line_str):
     title = designations[0] if designations else "Software Engineer"
     title = re.sub(r'\s+', ' ', title).strip()
 
-    status = random.choice(["new", "shortlisted", "review", "rejected"])
+    status = "new"
     avatar = f"https://api.dicebear.com/9.x/notionists/svg?seed={encodeURIComponent(name)}"
     appliedDate = f"2026-05-{random.randint(1, 20):02d}"
     
@@ -199,6 +199,7 @@ def parse_resume_json_line(line_str):
         "expMatch": expMatch,
         "domain": domain,
         "status": status,
+        "recruiter_statuses": {},
         "skills": skills[:8],
         "education": educations,
         "experiences": experiences,
@@ -226,13 +227,13 @@ def encodeURIComponent(val):
     return re.sub(r'[^a-zA-Z0-9]', '', val)
 
 async def seed_candidates_if_empty():
-    await seed_15_mock_candidate_accounts()
-    
     count = await candidate_profiles_collection.count_documents({"visibility": "public"})
     print(f"Current public candidate count in DB: {count}")
     if count > 0:
         print("Candidates collection already seeded. Skipping.")
         return
+        
+    await seed_15_mock_candidate_accounts()
 
     print("Seeding candidates collection with Pakistani identities & real calculated scores...")
     import math
@@ -508,11 +509,7 @@ async def seed_candidates_if_empty():
         }]
         
         avatar = f"https://api.dicebear.com/9.x/notionists/svg?seed={slug}"
-        status = random.choice(["new", "shortlisted", "review"])
-        if score >= 80 and random.random() < 0.6:
-            status = "shortlisted"
-        if score < 50 and random.random() < 0.6:
-            status = "rejected"
+        status = "new"
             
         applied_day = random.randint(1, 28)
         appliedDate = f"2026-05-{applied_day:02d}"
@@ -529,6 +526,7 @@ async def seed_candidates_if_empty():
             "expMatch": expMatch,
             "domain": job["domain"],
             "status": status,
+            "recruiter_statuses": {},
             "skills": cand_skills,
             "education": education,
             "experiences": experiences,
@@ -1720,6 +1718,7 @@ async def seed_15_mock_candidate_accounts():
             "expMatch": random.randint(70, 100),
             "domain": account["sector"],
             "status": "new",
+            "recruiter_statuses": {},
             "skills": account["skills"],
             "education": account["education"],
             "experiences": account["experiences"],
