@@ -1,0 +1,21 @@
+# Ignore backend/python files for Vercel deployment
+app/
+requirements.txt
+data/
+uploads/
+BACKEND.md
+FRONTEND.md
+scratch/
+.env
+app/.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.bin
+*.pt
+*.pth
+*.docx
+*.pdf

@@ -292,7 +292,7 @@ function IdentityGateway() {
       {/* Mesh Gradient Background */}
       <div className="absolute inset-0 flex flex-col md:flex-row overflow-hidden select-none pointer-events-auto z-10">
         {/* Noise Overlay */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] z-20 pointer-events-none"></div>
+        <div className="absolute inset-0 opacity-[0.03] bg-[url('/noise.svg')] z-20 pointer-events-none"></div>
 
         {/* Dynamic Animated Mesh Orbs */}
         <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-[130px] animate-float-1 pointer-events-none"></div>
